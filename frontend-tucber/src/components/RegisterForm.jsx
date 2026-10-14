@@ -1,28 +1,32 @@
 import { useState } from "react"
 import { useAuth } from "../context/useAuth"
+import {useFormValidation} from "../hooks/useFormValidation"
+import { validateEmail, validatePassword, validateRequired, validateRole } from "../utils/validationUtils"
 
 export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
     const { register } = useAuth()
-
-    const [nombre, setNombre] = useState('')
-    const [correo, setCorreo] = useState('')
-    const [contrasena, setContrasena] = useState('')
-    const [rol, setRol] = useState('cliente') 
-
-    const [error, setError] = useState(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const validators = {
+        nombre: (val) => validateRequired(val, 'El nombre completo'),
+        correo: validateEmail,
+        contrasena: (val) => validatePassword(val, 8),
+        rol: validateRole
+    }
+
+    const{values, setValues, errors, handlChange, handleBlur, validateAll, handleBackendErrors} =
+    useFormValidation({nombre: '', correo: '', contrasena: '', rol: 'cliente'},validators)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setError(null)
+        if (!validateAll()) return
         setIsSubmitting(true)
 
         try {
-            await register({ nombre, correo, contrasena, rol })
+            await register(values)
             if (onSuccess) onSuccess()
         } catch (err) {
-            const errorMessage = err.response?.data?.message || err.message || 'Error al registrar la cuenta.'
-            setError(errorMessage)
+            handleBackendErrors(err)
         } finally {
             setIsSubmitting(false)
         }
@@ -50,79 +54,96 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                 <span className="diamond" style={{ background: '#006852' }}></span>
             </div>
 
-            {error && <div className="error-msg">{error}</div>}
+            {errors.general && <div className="error-msg">{errors.general}</div>}
 
             <div className="form-group">
-                <label>Nombre completo</label>
-                <input
-                    type="text"
-                    className="form-input"
+                <label htmlFor="nombre" className={errors.nombre ? 'label-error' : ''}>
+                    Nombre completo
+                </label>
+                <input id="nombre" name="nombre" type="text" className={`form-input ${errors.nombre ? 'input-error' : ''}`}
                     placeholder="María López"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
+                    value={values.nombre}
+                    onChange={handlChange}
+                    onBlur={handleBlur}
                     required
                 />
+                {errors.nombre && <span className="field-error-msg">{errors.nombre}</span>}
             </div>
 
             <div className="form-group">
-                <label>Correo electrónico</label>
+                <label htmlFor= "correo" className={errors.correo ? 'label-error' : ''}>
+                    Correo electrónico
+                </label>
                 <input
+                    id="correo"
+                    name="correo"
                     type="email"
-                    className="form-input"
+                    className={`form-input ${errors.correo ? 'input-error' : ''}`}
                     placeholder="maria@correo.com"
-                    value={correo}
-                    onChange={(e) => setCorreo(e.target.value)}
+                    value={values.correo}
+                    onChange={handlChange}
+                    onBlur={handleBlur}
                     autoComplete="email"
                     required
                 />
+                {errors.correo && <span className="field-error-msg">{errors.correo}</span>}
             </div>
 
             <div className="form-group">
-                <label>Contraseña</label>
+                <label htmlFor="contrasena" className={errors.contrasena ? 'label-error' : ''}>
+                    Contraseña
+                </label>
                 <input
+                    id="contrasena"
+                    name="contrasena"
                     type="password"
-                    className="form-input"
+                    className={`form-input ${errors.contrasena ? 'input-error' : ''}`}
                     placeholder="Mínimo 8 caracteres"
-                    value={contrasena}
-                    onChange={(e) => setContrasena(e.target.value)}
+                    value={values.contrasena}
+                    onChange={handlChange}
+                    onBlur={handleBlur}
                     autoComplete="new-password"
                     required
                 />
+                {errors.contrasena && <span className="field-error-msg">{errors.contrasena}</span>}
             </div>
 
             <div className="form-group" style={{ marginTop: '0.2rem' }}>
-                <label>Quiero usar TUCBER para</label>
+                <label htmlFor="rol" className={errors.rol ? 'label-error' : ''}>
+                    Quiero usar TUCBER para
+                </label>
                 <div className="role-picker">
                     <div
-                        className={`role-card ${rol === 'cliente' ? 'selected' : ''}`}
-                        onClick={() => setRol('cliente')}
+                        className={`role-card ${values.rol === 'cliente' ? 'selected' : ''}`}
+                        onClick ={()=> setValues(prev => ({ ...prev, rol: 'cliente' }))}
                     >
                         <input
                             type="radio"
                             name="rol"
                             value="cliente"
-                            checked={rol === 'cliente'}
-                            onChange={() => setRol('cliente')}
+                            checked={values.rol === 'cliente'}
+                            onChange={handlChange}
                             className="role-radio"
                         />
                         Viajar
                     </div>
 
                     <div
-                        className={`role-card ${rol === 'conductor' ? 'selected' : ''}`}
-                        onClick={() => setRol('conductor')}
+                        className={`role-card ${values.rol === 'conductor' ? 'selected' : ''}`}
+                        onClick ={()=> setValues(prev => ({ ...prev, rol: 'conductor' }))}
                     >
                         <input
                             type="radio"
                             name="rol"
                             value="conductor"
-                            checked={rol === 'conductor'}
-                            onChange={() => setRol('conductor')}
+                            checked={values.rol === 'conductor'}
+                            onChange={handlChange}
                             className="role-radio"
                         />
                         Conductor
                     </div>
                 </div>
+                {errors.rol && <span className="field-error-msg">{errors.rol}</span>}
             </div>
 
             <button type="submit" disabled={isSubmitting} className="btn-submit">
