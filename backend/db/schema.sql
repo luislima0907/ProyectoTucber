@@ -1,5 +1,34 @@
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  idUsuario SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  correo TEXT UNIQUE NOT NULL,
+  contrasenaHash TEXT NOT NULL,
+  telefono TEXT,
+  rol TEXT NOT NULL CHECK (rol IN ('cliente', 'conductor')),
+  correoVerificado BOOLEAN NOT NULL DEFAULT FALSE,
+  verifiedAt TIMESTAMPTZ,
+  createAt TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updateAt TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS conductores (
+  idUsuario INTEGER PRIMARY KEY REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
+  placaVehiculo TEXT,
+  colorVehiculo TEXT,
+  capacidadVehiculo SMALLINT,
+  estadoRevision TEXT NOT NULL DEFAULT 'pendiente' CHECK (estadoRevision IN ('pendiente', 'en_revision', 'aprobado', 'rechazado')),
+  createAt TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updateAt TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sesiones (
+  idSesion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  idUsuario INTEGER NOT NULL REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
+  createAt TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expiresAt TIMESTAMPTZ NOT NULL,
+  revokedAt TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS sesiones_idUsuario_idx ON sesiones(idUsuario);
