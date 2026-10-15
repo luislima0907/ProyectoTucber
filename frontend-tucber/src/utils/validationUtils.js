@@ -27,7 +27,7 @@ export const validateRequired= (value, fieldName = 'Este campo') => {
 
 export const validateRole = (role) => {
     const allowedRoles = ['cliente', 'conductor']
-    if (!allowedRoles.includes(role)) 
+    if (!allowedRoles.includes(role))
         return 'Selecciona un rol válido (viajar o conductor).'
     return null
 }
@@ -47,7 +47,7 @@ export const validateRating = (rating) => {
 export const validateReport = (reason, description) => {
     const errors = {}
     if (!reason || !reason.trim()) errors.reason = 'El motivo del reporte es obligatorio'
-    if (!description || description.trim().length < 10) 
+    if (!description || description.trim().length < 10)
         errors.description = 'La descripción del reporte debe tener al menos 10 caracteres'
     return errors
 }
