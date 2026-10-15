@@ -19,6 +19,8 @@
   "packageManager": "pnpm@12.11.2",
   "type": "module",
   "dependencies": {
-    "express": "^5.3.0"
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
   }
 }
