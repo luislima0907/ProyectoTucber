@@ -5,6 +5,7 @@ import { RegisterForm } from './components/RegisterForm'
 import { LoginForm } from './components/LoginForm'
 import { ClienteHome } from './pages/ClienteHome'
 import { ConductorHome } from './pages/ConductorHome'
+import { SeleccionViaje } from './pages/SeleccionViaje'
 
 function MainContent() {
     const { user, logout, loading } = useAuth()
@@ -50,6 +51,16 @@ function MainContent() {
 }
 
 function App() {
+        const parametros = new URLSearchParams(window.location.search)
+
+    if (parametros.get('vista') === 'seleccion') {
+        return (
+            <div className="auth-container">
+                <SeleccionViaje />
+            </div>
+        )
+    }
+    
     return (
         <AuthProvider>
             <div className="auth-container">
