@@ -26,22 +26,26 @@ export default class AuthService{
 
          const user = (await userService.findUserByCorreo(userLoginDTO.correo))[0]
          const secret = process.env.JWT_SECRET
-        
-        
-         if (await bcrypt.compare(userLoginDTO.contrasena, user.contrasenahash)){
-            console.log("he entrado aca")
-            const payload = {
-                sub: user.idusuario,
-                rol: user.rol
-            }
-             const token = jwt.sign(payload,secret, {
+
+         if (!user || !await bcrypt.compare(userLoginDTO.contrasena, user.contrasenahash)){
+            throw new Error("Invalid credentials")
+         }
+
+         const payload = {
+             sub: user.idusuario,
+             rol: user.rol
+         }
+         const token = jwt.sign(payload, secret, {
              expiresIn: '500m'
          })
 
-            console.log("el token es"+  token)
-            return token
-         }
+         return { token, user: { id: user.idusuario, nombre: user.nombre, correo: user.correo, rol: user.rol } }
+    }
 
-        
+    async getUserById(id){
+        const { rows } = await this.repository.db.query("SELECT idusuario, nombre, correo, rol FROM usuarios WHERE idusuario = $1", [id])
+        const user = rows[0]
+        if (!user) return null
+        return { id: user.idusuario, nombre: user.nombre, correo: user.correo, rol: user.rol }
     }
 }   
