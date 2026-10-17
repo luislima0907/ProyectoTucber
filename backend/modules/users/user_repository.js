@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt'
-import { da } from 'zod/v4/locales'
 
 export default class UserRepository{
 
@@ -23,8 +22,8 @@ export default class UserRepository{
         console.log("entre al repository de user")
         const query = `INSERT INTO usuarios (nombre, correo, contrasenaHash, telefono, rol) VALUES ($1, $2, $3, $4, $5)
         `
-        user.contrasena = await bcrypt.hash(user.contrasena, 10)
-        const values = [user.nombre, user.correo,user.contrasena , user.telefono, user.rol]
+        const passwordHash = await bcrypt.hash(user.contrasena, 10)
+        const values = [user.nombre, user.correo, passwordHash, user.telefono, user.rol]
       
 
         
