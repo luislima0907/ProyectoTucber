@@ -1,5 +1,5 @@
 export async function runConductor(db){
-        db.query(`
+        return db.query(`
             
         CREATE TABLE IF NOT EXISTS conductores (
             idUsuario INTEGER PRIMARY KEY REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
