@@ -31,7 +31,7 @@ export default class AuthService{
          if (await bcrypt.compare(userLoginDTO.contrasena, user.contrasenahash)){
             console.log("he entrado aca")
             const payload = {
-                sub: user.id,
+                sub: user.idusuario,
                 rol: user.rol
             }
              const token = jwt.sign(payload,secret, {
