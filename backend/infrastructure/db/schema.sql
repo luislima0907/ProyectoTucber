@@ -23,12 +23,3 @@ CREATE TABLE IF NOT EXISTS conductores (
   updateAt TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS sesiones (
-  idSesion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  idUsuario INTEGER NOT NULL REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
-  createAt TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expiresAt TIMESTAMPTZ NOT NULL,
-  revokedAt TIMESTAMPTZ
-);
-
-CREATE INDEX IF NOT EXISTS sesiones_idUsuario_idx ON sesiones(idUsuario);
