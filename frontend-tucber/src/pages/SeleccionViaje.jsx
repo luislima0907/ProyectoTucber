@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { MapaSeleccion } from '../components/MapaSeleccion'
 import '../css/SeleccionViaje.css'
+import { ConfirmacionViaje } from './ConfirmacionViaje'
 
 function coordenadasValidas(punto) {
     return Boolean(
@@ -25,13 +26,11 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
     const [localizando, setLocalizando] = useState(false)
     const [resumen, setResumen] = useState(null)
 
-    // Evita que una ubicación pendiente sustituya una selección más reciente.
     const solicitudUbicacion = useRef(0)
 
     const invalidarResultado = useCallback(() => {
         setResumen(null)
 
-        // El siguiente módulo podrá borrar aquí su tarifa y recorrido.
         onCambioSeleccion?.()
     }, [onCambioSeleccion])
 
@@ -77,7 +76,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
 
     function usarMiUbicacion() {
         if (!navigator.geolocation) {
-            setMensaje('Puedes seleccionar tu recogida manualmente en el mapa.')
+            setMensaje('Puedes seleccionar tu ubicación manualmente en el mapa.')
             return
         }
 
@@ -103,7 +102,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
                 setLocalizando(false)
                 setMensaje(
                     'No se pudo obtener tu ubicación. ' +
-                    'Puedes elegir la recogida manualmente en el mapa.'
+                    'Puedes elegir tu ubicación manualmente en el mapa.'
                 )
             },
             {
@@ -137,6 +136,15 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
 
         setResumen(seleccion)
         onContinuar?.(seleccion)
+    }
+
+    if (resumen) {
+        return (
+            <ConfirmacionViaje
+                seleccion={resumen}
+                onVolver={() => setResumen(null)}
+            />
+        )
     }
 
     return (
@@ -213,7 +221,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
                 <small>
                     {destino
                         ? 'Ubicación marcada. Puedes corregirla en el mapa.'
-                        : 'Escribe una descripción y marca el destino en el mapa.'}
+                        : 'Escribe una descripcióno o marca el destino en el mapa.'}
                 </small>
             </div>
 
@@ -241,22 +249,6 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
             >
                 Continuar
             </button>
-
-            {resumen && (
-                <section className="resumen-viaje" aria-live="polite">
-                    <h2>Selección preparada</h2>
-                    <p><strong>Origen:</strong> {resumen.origen.descripcion}</p>
-                    <p><strong>Destino:</strong> {resumen.destino.descripcion}</p>
-                    <p>
-                        <strong>Referencia:</strong>
-                        {' '}{resumen.referenciaRecogida || 'Sin referencia'}
-                    </p>
-                    <p>
-                        La cobertura y la tarifa están pendientes
-                        de validación del servidor.
-                    </p>
-                </section>
-            )}
         </main>
     )
 }
