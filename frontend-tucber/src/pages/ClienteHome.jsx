@@ -1,40 +1,95 @@
+import { useState } from 'react'
+import { SeleccionViaje } from './SeleccionViaje'
+import '../css/ClienteHome.css'
 
 export function ClienteHome({ user, onLogout }) {
-    return (
-        <main className="app-card">
-            <h1 className="brand-title">
-                ¡Bienvenido a TUCBER, {user.nombre}!
-            </h1>
+    const [vista, setVista] = useState('inicio')
 
-            <p className="subtitle">
-                Panel de cliente
+    if (vista === 'viaje') {
+        return (
+            <div className="cliente-contenido">
+                <button
+                    type="button"
+                    className="cliente-volver"
+                    onClick={() => setVista('inicio')}
+                >
+                    ← Volver al inicio
+                </button>
+
+                <SeleccionViaje />
+            </div>
+        )
+    }
+
+    if (vista === 'cuenta') {
+        return (
+            <main className="app-card cliente-inicio">
+                <button
+                    type="button"
+                    className="cliente-volver"
+                    onClick={() => setVista('inicio')}
+                >
+                    ← Volver al inicio
+                </button>
+
+                <h1 className="brand-title">Mi cuenta</h1>
+
+                <dl className="cliente-datos">
+                    <dt>Nombre</dt>
+                    <dd>{user.nombre}</dd>
+
+                    <dt>Correo electrónico</dt>
+                    <dd>{user.correo}</dd>
+
+                    <dt>Tipo de cuenta</dt>
+                    <dd>Cliente</dd>
+                </dl>
+            </main>
+        )
+    }
+
+    return (
+        <main className="app-card cliente-inicio">
+            <h1 className="brand-title">¡Bienvenido a TUCBER!</h1>
+
+            <p className="cliente-saludo">
+                Hola, {user.nombre} prepárate para tu primer viaje.
             </p>
 
-            <div className="diamond-divider">
-                <span className="diamond"></span>
-                <span className="diamond"></span>
-                <span className="diamond"></span>
-            </div>
+            <section className="cliente-viaje">
+                <h2>¿A dónde quieres ir?</h2>
 
-            <section>
-                <h2>Mi cuenta</h2>
-                <p><strong>Nombre:</strong> {user.nombre}</p>
-                <p><strong>Correo:</strong> {user.correo}</p>
-                <p><strong>Rol:</strong> Cliente</p>
+                <p>
+                    Selecciona tu punto de recogida y destino
+                    para preparar un viaje.
+                </p>
+
+                <button
+                    type="button"
+                    className="btn-submit"
+                    onClick={() => setVista('viaje')}
+                >
+                    Preparar viaje
+                </button>
             </section>
 
-            <p className="subtitle">
-                Desde aquí podrás acceder a las funciones
-                de viajes cuando estén disponibles.
-            </p>
+            <nav className="cliente-opciones" aria-label="Mi cuenta">
+                <button
+                    type="button"
+                    className="cliente-opcion"
+                    onClick={() => setVista('cuenta')}
+                >
+                    Mi cuenta
+                </button>
 
-            <button
-                type="button"
-                onClick={onLogout}
-                className="btn-submit"
-            >
-                Cerrar sesión
-            </button>
+                <button
+                    type="button"
+                    className="cliente-opcion"
+                    onClick={onLogout}
+                >
+                    Cerrar sesión
+                </button>
+            </nav>
         </main>
     )
 }
