@@ -21,6 +21,19 @@ export default class DriverService{
         return this.toProfile(row)
     }
 
+    async getAvailability(idUsuario){
+        const row = await this.repository.findById(idUsuario)
+        return row?.disponible ?? false
+    }
+
+    async setAvailability(idUsuario, disponible){
+        return this.repository.setAvailability(idUsuario, disponible)
+    }
+
+    async getPendingRequests(idUsuario){
+        return this.repository.findPendingRequests(idUsuario)
+    }
+
     async saveMyProfile(idUsuario, vehicleData, file){
         let foto = null
         if (file){
@@ -74,7 +87,8 @@ export default class DriverService{
             color: row.colorvehiculo,
             capacidad: row.capacidadvehiculo,
             telefono: row.telefono,
-            foto: row.fotovehiculo ? PHOTO_REFERENCE_ROUTE : null
+            foto: row.fotovehiculo ? PHOTO_REFERENCE_ROUTE : null,
+            disponible: row.disponible ?? false
         }
     }
 }
