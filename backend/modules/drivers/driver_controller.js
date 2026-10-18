@@ -1,4 +1,5 @@
 import multer from 'multer'
+import { z } from 'zod'
 import { Vehicle, VEHICLE_LIMITS, validatePhotoFile } from './vehicle.js'
 
 const PHOTO_FIELD = 'foto'
@@ -16,6 +17,9 @@ export default class DriverController{
         router.get("/drivers/me", (req, res) => this.getMyProfile(req, res))
         router.put("/drivers/me", (req, res) => this.handlePhotoUpload(req, res))
         router.get("/drivers/me/photo", (req, res) => this.getMyPhoto(req, res))
+        router.get("/drivers/me/availability", (req, res) => this.getAvailability(req, res))
+        router.patch("/drivers/me/availability", (req, res) => this.setAvailability(req, res))
+        router.get("/drivers/requests/pending", (req, res) => this.getPendingRequests(req, res))
     }
 
     resolveDriver(req, res){
@@ -44,6 +48,53 @@ export default class DriverController{
         }catch(error){
             console.error(error)
             return res.status(500).json({ message: 'No se ha podido consultar el perfil del vehículo' })
+        }
+    }
+
+    async getAvailability(req, res){
+        const idUsuario = this.resolveDriver(req, res)
+        if (idUsuario === null) return
+
+        try{
+            const disponible = await this.driverService.getAvailability(idUsuario)
+            return res.status(200).json({ disponible })
+        }catch(error){
+            console.error(error)
+            return res.status(500).json({ message: 'No se pudo consultar la disponibilidad' })
+        }
+    }
+
+    async setAvailability(req, res){
+        const idUsuario = this.resolveDriver(req, res)
+        if (idUsuario === null) return
+
+        const result = z.object({ disponible: z.boolean() }).safeParse(req.body)
+        if (!result.success){
+            return res.status(400).json({ message: 'disponible debe ser booleano' })
+        }
+
+        try{
+            const disponible = await this.driverService.setAvailability(idUsuario, result.data.disponible)
+            return res.status(200).json({ disponible })
+        }catch(error){
+            if (error.code === 'ACTIVE_TRIP'){
+                return res.status(409).json({ message: error.message })
+            }
+            console.error(error)
+            return res.status(500).json({ message: 'No se pudo actualizar la disponibilidad' })
+        }
+    }
+
+    async getPendingRequests(req, res){
+        const idUsuario = this.resolveDriver(req, res)
+        if (idUsuario === null) return
+
+        try{
+            const solicitudes = await this.driverService.getPendingRequests(idUsuario)
+            return res.status(200).json({ solicitudes })
+        }catch(error){
+            console.error(error)
+            return res.status(500).json({ message: 'No se pudieron consultar las solicitudes pendientes' })
         }
     }
 
