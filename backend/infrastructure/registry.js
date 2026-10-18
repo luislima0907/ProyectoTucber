@@ -11,6 +11,9 @@ import DriverService from '../modules/drivers/driver_service.js'
 import DriverRepository from '../modules/drivers/driver_repository.js'
 import TarifaController from '../modules/tarifas/tarifa_controller.js'
 import TarifaService from '../modules/tarifas/tarifa_service.js'
+import SolicitudController from '../modules/solicitudes/solicitud_controller.js'
+import SolicitudService from '../modules/solicitudes/solicitud_service.js'
+import SolicitudRepository from '../modules/solicitudes/solicitud_repository.js'
 
 export const modules = [
     {
@@ -37,6 +40,12 @@ export const modules = [
         controller: TarifaController,
         service: TarifaService,
         repository: null,
+        public: false
+    },
+    {
+        controller: SolicitudController,
+        service: SolicitudService,
+        repository: SolicitudRepository,
         public: false
     }
 ]
