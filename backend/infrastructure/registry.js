@@ -9,7 +9,8 @@ import AuthRepository from '../modules/auth/auth_repository.js'
 import DriverController from '../modules/drivers/driver_controller.js'
 import DriverService from '../modules/drivers/driver_service.js'
 import DriverRepository from '../modules/drivers/driver_repository.js'
-import { authenticateToken } from '../middlewares/jwt_midleware.js'
+import TarifaController from '../modules/tarifas/tarifa_controller.js'
+import TarifaService from '../modules/tarifas/tarifa_service.js'
 
 export const modules = [
     {
@@ -30,6 +31,12 @@ export const modules = [
         controller: DriverController,
         service: DriverService,
         repository: DriverRepository,
+        public: false
+    },
+    {
+        controller: TarifaController,
+        service: TarifaService,
+        repository: null,
         public: false
     }
 ]
