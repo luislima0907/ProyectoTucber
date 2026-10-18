@@ -20,7 +20,14 @@ async function setup(){
     
 
     for (let i = 0; i < modules.length; i++){
-        new modules[i].controller(modules[i].public ? publicRouter : app, new modules[i].service(new modules[i].repository(pool)))
+        const module = modules[i]
+        const serviceDependency = module.repository
+            ? new module.repository(pool)
+            : process.env.GOOGLE_MAPS_API_KEY
+        new module.controller(
+            module.public ? publicRouter : app,
+            new module.service(serviceDependency)
+        )
 
     }
     app.listen("3001", () =>{
