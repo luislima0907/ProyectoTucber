@@ -1,0 +1,89 @@
+.app-card.cliente-inicio {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.cliente-saludo {
+    margin: 16px 0 24px;
+    color: var(--text-muted);
+}
+
+.cliente-viaje {
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.cliente-viaje h2 {
+    margin: 0 0 10px;
+    font-size: 1.3rem;
+}
+
+.cliente-viaje p {
+    margin: 0 0 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.cliente-opciones {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+}
+
+.cliente-opcion {
+    min-height: 48px;
+    padding: 14px 0;
+    border: none;
+    background: transparent;
+    color: var(--primary-green);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cliente-opcion:hover {
+    text-decoration: underline;
+}
+
+.cliente-contenido {
+    width: 100%;
+    max-width: 760px;
+    min-width: 0;
+}
+
+.cliente-volver {
+    align-self: flex-start;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    color: var(--primary-green);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cliente-datos dt {
+    margin-top: 18px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.cliente-datos dd {
+    margin: 6px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.cliente-opcion:focus-visible,
+.cliente-volver:focus-visible {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 4px;
+}
+
+@media (max-width: 600px) {
+    .app-card.cliente-inicio {
+        padding: 24px 20px;
+    }
+}
