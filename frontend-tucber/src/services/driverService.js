@@ -15,5 +15,23 @@ export const driverService = {
         })
 
         return response.data.perfil
+    },
+
+    async getAvailability(options = {}) {
+        const response = await api.get('/drivers/me/availability', options)
+        return response.data
+    },
+
+    async updateAvailability(disponible) {
+        const response = await api.patch('/drivers/me/availability', {
+            disponible
+        })
+
+        return response.data
+    },
+
+    async getPendingRequests(options = {}) {
+        const response = await api.get('/drivers/requests/pending', options)
+        return response.data.solicitudes
     }
 }

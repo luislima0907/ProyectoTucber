@@ -1,70 +1,103 @@
 import { useState } from 'react'
 import { ConductorProfileForm } from '../components/ConductorProfileForm'
+import { SolicitudesDisponibles } from '../components/SolicitudesDisponibles'
+import '../css/ConductorSolicitudes.css'
 
 export function ConductorHome({ user, onLogout }) {
     const [currentView, setCurrentView] = useState('home')
 
-    if (currentView === 'vehicle') {
-        return (
-            <main className="app-card">
+    return (
+        <main className="conductor-panel">
+            <header className="conductor-header">
+                <div className="conductor-marca">
+                    <h1>TUCBER</h1>
+                    <span>Panel de conductor</span>
+                </div>
+
+                <div className="conductor-usuario">
+                    <span>{user.nombre}</span>
+                    <button
+                        type="button"
+                        className="conductor-cerrar-sesion"
+                        onClick={onLogout}
+                    >
+                        Cerrar sesión
+                    </button>
+                </div>
+            </header>
+
+            <nav className="conductor-navegacion" aria-label="Navegación del conductor">
                 <button
                     type="button"
-                    className="link-btn"
+                    className={currentView === 'home' ? 'activo' : ''}
                     onClick={() => setCurrentView('home')}
                 >
-                    Volver al panel
+                    Inicio
                 </button>
-
-                 <ConductorProfileForm />
-            </main>
-        )
-    }
-
-    return (
-        <main className="app-card">
-            <h1 className="brand-title">
-                ¡Bienvenido a TUCBER, {user.nombre}!
-            </h1>
-
-            <p className="subtitle">
-                Panel de conductor
-            </p>
-
-            <div className="diamond-divider">
-                <span className="diamond"></span>
-                <span className="diamond"></span>
-                <span className="diamond"></span>
-            </div>
-
-            <section>
-                <h2>Mi cuenta</h2>
-                <p><strong>Nombre:</strong> {user.nombre}</p>
-                <p><strong>Correo:</strong> {user.correo}</p>
-                <p><strong>Rol:</strong> Conductor</p>
-            </section>
-
-            <section className="form-group">
-                <h2>Mi vehículo</h2>
-                <p className="subtitle">
-                    Registra o actualiza los datos de tu vehículo.
-                </p>
 
                 <button
                     type="button"
-                    className="btn-submit"
+                    className={currentView === 'requests' ? 'activo' : ''}
+                    onClick={() => setCurrentView('requests')}
+                >
+                    Solicitudes disponibles
+                </button>
+
+                <button
+                    type="button"
+                    className={currentView === 'vehicle' ? 'activo' : ''}
                     onClick={() => setCurrentView('vehicle')}
                 >
-                    Gestionar mi vehículo
+                    Mi vehículo
                 </button>
-            </section>
+            </nav>
 
-            <button
-                type="button"
-                onClick={onLogout}
-                className="btn-submit"
-            >
-                Cerrar sesión
-            </button>
+            <div className="conductor-contenido">
+                {currentView === 'home' && (
+                    <section className="conductor-inicio">
+                        <h2>¡Bienvenido a TUCBER, {user.nombre}!</h2>
+                        <p>
+                            Desde aquí puedes administrar tu vehículo y consultar
+                            las solicitudes de viaje disponibles.
+                        </p>
+
+                        <div className="conductor-accesos">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentView('requests')}
+                            >
+                                <strong>Solicitudes disponibles</strong>
+                                <span>Consulta los viajes que buscan conductor.</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setCurrentView('vehicle')}
+                            >
+                                <strong>Mi vehículo</strong>
+                                <span>Consulta o actualiza los datos de tu vehículo.</span>
+                            </button>
+                        </div>
+
+                        <section className="conductor-cuenta">
+                            <h3>Mi cuenta</h3>
+                            <p><strong>Nombre:</strong> {user.nombre}</p>
+                            <p><strong>Correo:</strong> {user.correo}</p>
+                            <p><strong>Rol:</strong> Conductor</p>
+                        </section>
+                    </section>
+                )}
+
+                {currentView === 'requests' && (
+                    <SolicitudesDisponibles />
+                )}
+
+                {currentView === 'vehicle' && (
+                    <div className="conductor-vehiculo">
+                        <ConductorProfileForm />
+                    </div>
+                )}
+            </div>
         </main>
     )
 }
