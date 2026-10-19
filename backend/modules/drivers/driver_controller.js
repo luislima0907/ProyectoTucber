@@ -20,6 +20,7 @@ export default class DriverController{
         router.get("/drivers/me/availability", (req, res) => this.getAvailability(req, res))
         router.patch("/drivers/me/availability", (req, res) => this.setAvailability(req, res))
         router.get("/drivers/requests/pending", (req, res) => this.getPendingRequests(req, res))
+        router.get("/drivers/requests/current", (req, res) => this.getCurrentTrip(req, res))
     }
 
     resolveDriver(req, res){
@@ -95,6 +96,19 @@ export default class DriverController{
         }catch(error){
             console.error(error)
             return res.status(500).json({ message: 'No se pudieron consultar las solicitudes pendientes' })
+        }
+    }
+
+    async getCurrentTrip(req, res){
+        const idUsuario = this.resolveDriver(req, res)
+        if (idUsuario === null) return
+
+        try{
+            const solicitud = await this.driverService.getCurrentTrip(idUsuario)
+            return res.status(200).json({ solicitud })
+        }catch(error){
+            console.error(error)
+            return res.status(500).json({ message: 'No se pudo consultar el viaje actual' })
         }
     }
 

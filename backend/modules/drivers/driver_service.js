@@ -34,6 +34,10 @@ export default class DriverService{
         return this.repository.findPendingRequests(idUsuario)
     }
 
+    async getCurrentTrip(idUsuario){
+        return this.repository.findCurrentTrip(idUsuario)
+    }
+
     async saveMyProfile(idUsuario, vehicleData, file){
         let foto = null
         if (file){
