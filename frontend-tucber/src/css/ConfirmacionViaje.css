@@ -81,3 +81,9 @@
         padding: 20px;
     }
 }
+
+.confirmacion-viaje .btn-corregir:disabled,
+.cliente-contenido .cliente-volver:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

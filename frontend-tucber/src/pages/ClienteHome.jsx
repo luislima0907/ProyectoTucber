@@ -4,6 +4,7 @@ import '../css/ClienteHome.css'
 
 export function ClienteHome({ user, onLogout }) {
     const [vista, setVista] = useState('inicio')
+    const [envioBloqueado, setEnvioBloqueado] = useState(false)
 
     if (vista === 'viaje') {
         return (
@@ -11,12 +12,16 @@ export function ClienteHome({ user, onLogout }) {
                 <button
                     type="button"
                     className="cliente-volver"
-                    onClick={() => setVista('inicio')}
+                    disabled={envioBloqueado}
+                    onClick={() => {
+                        if(!envioBloqueado) setVista('inicio')}}
                 >
                     ← Volver al inicio
                 </button>
 
-                <SeleccionViaje />
+                <SeleccionViaje
+                    onBloqueoCambio={setEnvioBloqueado}
+                />
             </div>
         )
     }
