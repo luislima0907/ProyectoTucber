@@ -51,6 +51,182 @@ function formatearDistancia(metros) {
     return `${(distancia / 1000).toFixed(2)} km`
 }
 
+function TarjetaSolicitud({ solicitud, disponible }) {
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [oferta, setOferta] = useState(null)
+    const [tiempoRestante, setTiempoRestante] = useState(30)
+    const [errorOferta, setErrorOferta] = useState('')
+    const [prevDisponible, setPrevDisponible] = useState(disponible)
+
+    const timerRef = useRef(null)
+    const pollingRef = useRef(null)
+
+    if (prevDisponible !== disponible) {
+        setPrevDisponible(disponible)
+        if (!disponible) {
+            setOferta(null)
+            setTiempoRestante(null)
+            setErrorOferta('')
+        }
+    }
+
+    const handleOfrecerme = async () => {
+        if (isSubmitting || oferta?.status === 'PENDING' || oferta?.status === 'vigente') return
+
+        setIsSubmitting(true)
+        setErrorOferta('')
+
+        try {
+            const res = await driverService.submitOffer(solicitud.id)
+            const ofertaData = res?.oferta || res
+            const statusNormalizado = ofertaData?.status || ofertaData?.estado || 'vigente'
+            let segundosRestantes = 30
+            if (ofertaData?.expiresAt) {
+                const diff = Math.floor((new Date(ofertaData.expiresAt).getTime() - Date.now()) / 1000)
+                if (diff > 0) segundosRestantes = diff
+            }
+
+            setOferta({
+                ...ofertaData,
+                status: statusNormalizado
+            })
+            setTiempoRestante(segundosRestantes)
+        } catch (err) {
+            console.error('Error al hacer oferta:', err)
+            setErrorOferta(
+                obtenerMensajeError(err, 'La solicitud ya no está disponible.')
+            )
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    useEffect(() => {
+        const esOfertaActiva = oferta?.status === 'PENDING' || oferta?.status === 'vigente'
+
+        if (esOfertaActiva && tiempoRestante > 0) {
+            timerRef.current = setInterval(() => {
+                setTiempoRestante((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current)
+                        setOferta((prevOferta) => 
+                            prevOferta ? { ...prevOferta, status: 'EXPIRED' } : null
+                        )
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+        }
+
+        return () => clearInterval(timerRef.current)
+    }, [oferta?.status, tiempoRestante])
+
+    useEffect(() => {
+        const esOfertaActiva = oferta?.status === 'PENDING' || oferta?.status === 'vigente'
+
+        if (esOfertaActiva && oferta?.id) {
+            pollingRef.current = setInterval(async () => {
+                try {
+                    const res = await driverService.getOfferStatus(oferta.id)
+                    if (res?.status === 'ACCEPTED') {
+                        setOferta((prev) => ({ ...prev, status: 'ACCEPTED' }))
+                        clearInterval(pollingRef.current)
+                    } else if (res?.status === 'REJECTED' || res?.status === 'EXPIRED') {
+                        setOferta((prev) => ({ ...prev, status: res.status }))
+                        clearInterval(pollingRef.current)
+                    }
+                } catch{ 
+                    clearInterval(pollingRef.current)
+                }
+            }, 3000)
+        }
+        return () => clearInterval(pollingRef.current)
+    }, [oferta?.id, oferta?.status])
+
+    return (
+        <article className="solicitudes-viaje">
+            <div className="solicitudes-viaje-titulo">
+                <h4>Solicitud #{solicitud.id}</h4>
+                <span>Buscando conductor</span>
+            </div>
+
+            <div className="solicitudes-viaje-datos">
+                <div>
+                    <span>Zona de origen aproximada</span>
+                    <strong>{formatearZona(solicitud.originZone)}</strong>
+                </div>
+
+                <div>
+                    <span>Zona de destino aproximada</span>
+                    <strong>{formatearZona(solicitud.destinationZone)}</strong>
+                </div>
+
+                <div>
+                    <span>Distancia estimada</span>
+                    <strong>{formatearDistancia(solicitud.distanceMeters)}</strong>
+                </div>
+
+                <div>
+                    <span>Tarifa</span>
+                    <strong>
+                        {formatearMonto(solicitud.amount, solicitud.currency)}
+                    </strong>
+                </div>
+            </div>
+
+            {errorOferta && (
+                <p className="solicitudes-error" role="alert" style={{ marginTop: '0.5rem' }}>
+                    {errorOferta}
+                </p>
+            )}
+
+            <div style={{ marginTop: '0.5rem' }}>
+                {(!oferta || oferta.status === 'EXPIRED' || oferta.status === 'REJECTED') && (
+                    <div>
+                        {oferta?.status === 'EXPIRED' && (
+                            <p style={{ color: '#d97706', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                La oferta ha expirado.
+                            </p>
+                        )}
+
+                        {oferta?.status === 'REJECTED' && (
+                            <p style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                La oferta fue rechazada.
+                            </p>
+                        )}
+
+                        <button 
+                            type="button" 
+                            className="solicitudes-boton-principal" 
+                            onClick={handleOfrecerme} 
+                            disabled={isSubmitting || !disponible}
+                        >   
+                            {isSubmitting ? 'Enviando oferta...' : 'Ofrecerme'}
+                        </button>
+                    </div>
+                )}
+
+                {(oferta?.status === 'PENDING' || oferta?.status === 'vigente') && (
+                    <div style={{ backgroundColor: '#fef3c7', padding: '0.75rem', borderRadius: '8px', textAlign: 'center' }}>
+                        <strong style={{ color: '#b45309', display: 'block' }}>
+                            Estado: Oferta Pendiente
+                        </strong>
+                        <span style={{ fontSize: '0.85rem', color: '#78350f' }}>
+                            Vence aproximadamente en: <strong>{tiempoRestante}s</strong>
+                        </span>
+                    </div>
+                )}
+
+                {oferta?.status === 'ACCEPTED' && (
+                    <div style={{ background: '#d1fae5', color: '#065f46', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', textAlign: 'center' }}>
+                        ¡Oferta Aceptada! Abriendo viaje asignado...
+                    </div>
+                )}
+            </div>
+        </article>
+    )
+}
 export function SolicitudesDisponibles() {
     const [disponible, setDisponible] = useState(false)
     const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(true)
@@ -167,7 +343,9 @@ export function SolicitudesDisponibles() {
     useEffect(() => {
         if (!disponible) return
 
+        queueMicrotask(() => {
         consultarSolicitudes()
+        })
 
         const intervalo = window.setInterval(() => {
             consultarSolicitudes()
@@ -328,48 +506,11 @@ export function SolicitudesDisponibles() {
             ) : (
                 <div className="solicitudes-listado">
                     {solicitudes.map((solicitud) => (
-                        <article
-                            className="solicitudes-viaje"
+                        <TarjetaSolicitud
                             key={solicitud.id}
-                        >
-                            <div className="solicitudes-viaje-titulo">
-                                <h4>Solicitud #{solicitud.id}</h4>
-                                <span>Buscando conductor</span>
-                            </div>
-
-                            <div className="solicitudes-viaje-datos">
-                                <div>
-                                    <span>Zona de origen aproximada</span>
-                                    <strong>
-                                        {formatearZona(solicitud.originZone)}
-                                    </strong>
-                                </div>
-
-                                <div>
-                                    <span>Zona de destino aproximada</span>
-                                    <strong>
-                                        {formatearZona(solicitud.destinationZone)}
-                                    </strong>
-                                </div>
-
-                                <div>
-                                    <span>Distancia estimada</span>
-                                    <strong>
-                                        {formatearDistancia(solicitud.distanceMeters)}
-                                    </strong>
-                                </div>
-
-                                <div>
-                                    <span>Tarifa</span>
-                                    <strong>
-                                        {formatearMonto(
-                                            solicitud.amount,
-                                            solicitud.currency
-                                        )}
-                                    </strong>
-                                </div>
-                            </div>
-                        </article>
+                            solicitud={solicitud}
+                            disponible={disponible}
+                        />
                     ))}
                 </div>
             )}

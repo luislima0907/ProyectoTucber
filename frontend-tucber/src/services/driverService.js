@@ -33,5 +33,15 @@ export const driverService = {
     async getPendingRequests(options = {}) {
         const response = await api.get('/drivers/requests/pending', options)
         return response.data.solicitudes
+    },
+
+    async submitOffer(requestId) {
+        const response = await api.post('/ofertas', { idSolicitud: Number(requestId) })
+        return response.data.oferta
+    },
+
+    async getOfferStatus(offerId) {
+        const response = await api.get(`/ofertas/${offerId}`)
+        return response.data.oferta
     }
 }
