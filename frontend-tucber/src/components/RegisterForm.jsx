@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useAuth } from "../context/useAuth"
 import {useFormValidation} from "../hooks/useFormValidation"
-import { validateEmail, validatePassword, validateRequired, validateRole } from "../utils/validationUtils"
+import { validateEmail, validatePassword, validateRequired, validateRole, validatePhone } from "../utils/validationUtils"
 
 export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
     const { register } = useAuth()
@@ -11,11 +11,12 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
         nombre: (val) => validateRequired(val, 'El nombre completo'),
         correo: validateEmail,
         contrasena: (val) => validatePassword(val, 8),
+        telefono: validatePhone,
         rol: validateRole
     }
 
     const{values, setValues, errors, handlChange, handleBlur, validateAll, handleBackendErrors} =
-    useFormValidation({nombre: '', correo: '', contrasena: '', rol: 'cliente'},validators)
+    useFormValidation({nombre: '', correo: '', contrasena: '', telefono: '', rol: 'cliente'},validators)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -112,6 +113,26 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                     required
                 />
                 {errors.contrasena && <span className="field-error-msg">{errors.contrasena}</span>}
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="telefono" className={errors.telefono ? 'label-error' : ''}>
+                    Teléfono
+                </label>
+                <input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    className={`form-input ${errors.telefono ? 'input-error' : ''}`}
+                    placeholder="55555555"
+                    value={values.telefono}
+                    onChange={handlChange}
+                    onBlur={handleBlur}
+                    autoComplete="tel"
+                    disabled={isSubmitting}
+                    required
+                />
+                {errors.telefono && <span className="field-error-msg">{errors.telefono}</span>}
             </div>
 
             <div className="form-group" style={{ marginTop: '0.2rem' }}>
