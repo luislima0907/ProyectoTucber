@@ -6,4 +6,12 @@ export default class OfertaService{
     async create(idConductor, { idSolicitud }){
         return this.repository.createWithProtection({ idConductor, idSolicitud })
     }
+
+    async accept(idUsuario, idOferta){
+        return this.repository.acceptWithProtection({ idOferta, idUsuario })
+    }
+
+    async discard(idUsuario, idOferta){
+        return this.repository.discardWithProtection({ idOferta, idUsuario })
+    }
 }

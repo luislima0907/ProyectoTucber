@@ -115,6 +115,32 @@ export default class DriverRepository{
         }))
     }
 
+    async findCurrentTrip(idConductor){
+        const result = await this.db.query(
+            `SELECT *
+             FROM solicitudes
+             WHERE idConductor = $1
+               AND estado IN ('aceptada', 'en_curso')
+             ORDER BY createAt DESC
+             LIMIT 1`,
+            [idConductor]
+        )
+        const row = result.rows[0]
+        if (!row) return null
+        return {
+            id: row.idsolicitud,
+            origin: row.origen,
+            destination: row.destino,
+            reference: row.referencia,
+            distanceMeters: row.distanciacotizadametros,
+            amount: Number(row.tarifaacordada),
+            currency: row.moneda,
+            status: row.estado,
+            createdAt: row.createat,
+            expiresAt: row.expiresat
+        }
+    }
+
     async saveVehicle({ idUsuario, placa, color, capacidad, telefono, foto }){
         const client = await this.db.connect()
         try{
