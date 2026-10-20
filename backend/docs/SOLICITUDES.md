@@ -200,7 +200,6 @@ fecha de vencimiento no forman parte de los datos confiables del cliente.
 6. Si no existe, el servicio llama a `TarifaService.calculateQuote`.
 7. `TarifaService` realiza la geocodificación inversa de ambos puntos.
 8. Se verifica que origen y destino estén en:
-   - municipio: `Jalapa`;
    - departamento: `Jalapa`;
    - país: `GT`.
 9. Se calcula la ruta mediante Google Routes API.

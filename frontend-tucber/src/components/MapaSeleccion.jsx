@@ -16,11 +16,15 @@ export function MapaSeleccion({
     origen,
     destino,
     centro,
+    ruta,
     onSeleccionar
 }) {
     const contenedor = useRef(null)
     const mapa = useRef(null)
     const claseMarcador = useRef(null)
+    const clasePolyline = useRef(null)
+    const decodificarRuta = useRef(null)
+    const trazado = useRef(null)
     const marcadores = useRef({ origen: null, destino: null })
     const puntoActivo = useRef('origen')
 
@@ -36,15 +40,21 @@ export function MapaSeleccion({
                     throw new Error('Falta la clave en .env.local')
                 }
 
-                const [{ Map }, { AdvancedMarkerElement }] =
-                    await Promise.all([
-                        importLibrary('maps'),
-                        importLibrary('marker')
-                    ])
+                const [
+                    { Map, Polyline },
+                    { AdvancedMarkerElement },
+                    { encoding }
+                ] = await Promise.all([
+                    importLibrary('maps'),
+                    importLibrary('marker'),
+                    importLibrary('geometry')
+                ])
 
                 if (cancelado || !contenedor.current) return
 
                 claseMarcador.current = AdvancedMarkerElement
+                clasePolyline.current = Polyline
+                decodificarRuta.current = encoding.decodePath
 
                 mapa.current = new Map(contenedor.current, {
                     center: { lat: 14.6347, lng: -89.9889 },
@@ -72,8 +82,11 @@ export function MapaSeleccion({
                 if (marcador) marcador.map = null
             })
 
+            if (trazado.current) trazado.current.setMap(null)
+
             marcadoresActuales.origen = null
             marcadoresActuales.destino = null
+            trazado.current = null
             mapa.current = null
         }
     }, [])
@@ -134,10 +147,38 @@ export function MapaSeleccion({
     }, [listo, origen, destino])
 
     useEffect(() => {
-        if (listo && centro && mapa.current) {
+        if (!listo || !mapa.current) return
+
+        if (trazado.current) {
+            trazado.current.setMap(null)
+            trazado.current = null
+        }
+
+        if (!ruta || !decodificarRuta.current) return
+
+        trazado.current = new clasePolyline.current({
+            map: mapa.current,
+            path: decodificarRuta.current(ruta),
+            strokeColor: '#006852',
+            strokeOpacity: 0.9,
+            strokeWeight: 5
+        })
+    }, [listo, ruta])
+
+    useEffect(() => {
+        if (!listo || !mapa.current) return
+
+        if (origen && destino) {
+            mapa.current.fitBounds({
+                north: Math.max(origen.lat, destino.lat),
+                south: Math.min(origen.lat, destino.lat),
+                east: Math.max(origen.lng, destino.lng),
+                west: Math.min(origen.lng, destino.lng)
+            }, 48)
+        } else if (centro) {
             mapa.current.panTo(centro)
         }
-    }, [listo, centro])
+    }, [listo, centro, origen, destino])
 
     return (
         <section>

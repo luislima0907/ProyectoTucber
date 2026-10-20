@@ -51,9 +51,11 @@ El backend devuelve:
    geocodificación inversa. Esto convierte las coordenadas en componentes
    administrativos verificables.
 4. Comprueba que ambos puntos pertenezcan simultáneamente a:
-   - Municipio: `Jalapa`.
    - Departamento: `Jalapa`.
    - País: `GT` (Guatemala).
+
+   El nombre del departamento se normaliza, porque Google puede responder
+   `Jalapa` o `Jalapa Department` para el mismo departamento.
 5. Si alguno de los puntos está fuera de la zona piloto, el proceso termina y
    no se solicita una ruta ni se calcula una tarifa.
 6. Envía origen y destino a Google Routes API con modo de transporte
@@ -79,7 +81,7 @@ Este archivo contiene todos los valores de negocio relacionados con la
 tarifa:
 
 - Moneda y símbolo.
-- Nombre del municipio, departamento y país de la zona piloto.
+- Nombre del departamento y país de la zona piloto.
 - Importe mínimo y máximo.
 - Rangos de distancia y sus importes.
 
@@ -93,7 +95,7 @@ Jalapa ni los precios dentro de los endpoints.
 El servicio contiene la comunicación con Google y la lógica del proceso:
 
 - Consulta Geocoding para cada coordenada.
-- Extrae municipio, departamento y país de la respuesta.
+- Extrae departamento y país de la respuesta.
 - Rechaza puntos que no coincidan con la configuración de la zona.
 - Consulta Routes API para obtener la ruta por carretera.
 - Comprueba que Google haya devuelto distancia y duración.
@@ -120,13 +122,13 @@ y se monta desde [main.js](./main.js) después del middleware de autenticación.
 
 | Distancia de la ruta | Importe |
 | --- | ---: |
-| Hasta 2 km | Q3 |
-| Más de 2 y hasta 5 km | Q6 |
-| Más de 5 y hasta 10 km | Q10 |
-| Más de 10 y hasta 15 km | Q15 |
-| Más de 15 km | Q20 |
+| Hasta 2 km | Q5 |
+| Más de 2 y hasta 5 km | Q10 |
+| Más de 5 y hasta 8 km | Q15 |
+| Más de 8 y hasta 12 km | Q20 |
+| Más de 12 km | Q25 |
 
-El mínimo es Q3 y el máximo Q20. La zona piloto y estos rangos se mantienen
+El mínimo es Q5 y el máximo Q25. La zona piloto y estos rangos se mantienen
 en un solo archivo para evitar valores repetidos en varios endpoints.
 
 La selección de rangos funciona de forma ordenada:
@@ -135,10 +137,11 @@ La selección de rangos funciona de forma ordenada:
 2. Se redondea `distanceKm` a dos decimales únicamente para mostrarlo.
 3. Se busca el primer rango cuyo límite sea mayor o igual a la distancia.
 4. Se aplica el importe de ese rango.
-5. El resultado se mantiene entre el mínimo Q3 y el máximo Q20.
+5. El resultado se mantiene entre el mínimo Q5 y el máximo Q25.
 
 Por ejemplo, una ruta de `3,420` metros equivale a `3.42` km y obtiene una
-tarifa de `Q6`. Una ruta de `18` km obtiene `Q20`.
+tarifa de `Q10`. Una ruta de `7.7` km obtiene `Q15`. Una ruta de `18` km obtiene
+`Q25`.
 
 Los límites son inclusivos en el extremo superior: exactamente `2` km usa el
 primer rango y exactamente `5` km usa el segundo rango.
@@ -150,11 +153,12 @@ Ejemplo:
 ```json
 {
   "distanceKm": 3.42,
-  "amount": 6,
+  "amount": 10,
   "currency": "GTQ",
   "currencySymbol": "Q",
   "distanceMeters": 3420,
   "durationSeconds": 780,
+  "polyline": "yzcxC~sxwO...",
   "origin": {
     "latitude": 14.6349,
     "longitude": -89.9886
@@ -169,6 +173,12 @@ Ejemplo:
 `amount` es un número para que el frontend pueda mostrarlo o procesarlo
 fácilmente. La moneda se entrega por separado para no interpretar
 incorrectamente el importe.
+
+`polyline` es la geometría codificada del recorrido que Google usó para
+calcular `distanceMeters` y `amount`. El frontend la decodifica para dibujar el
+trazado referencial, de modo que la ruta mostrada es la misma que se usó para
+la tarifa. Si Google no devuelve geometría, el campo llega como `null` y la
+cotización sigue siendo válida; en ese caso el frontend no dibuja ninguna ruta.
 
 ## Configuración de Google Maps
 
@@ -197,7 +207,7 @@ variable de entorno.
 
 - `400` por coordenadas inválidas: el cuerpo no cumple el esquema esperado,
   falta `origin` o `destination`, o la latitud/longitud está fuera de su rango.
-- `400` por zona: el municipio, departamento o país de un punto no coincide
+- `400` por zona: el departamento o país de un punto no coincide
   con la zona piloto configurada.
 - `502` por configuración: falta la clave de Google Maps en el backend.
 - `502` por Google: Geocoding o Routes no responde correctamente.
@@ -248,7 +258,7 @@ Se verificó:
 
 - Sintaxis de los nuevos módulos del backend.
 - Conversión de metros a kilómetros.
-- Selección de rangos de Q3 a Q20.
+- Selección de rangos de Q5 a Q25.
 - Moneda `GTQ`.
 - Rechazo de una clave de Google ausente.
 - Flujo simulado de validación de zona, cálculo de ruta y generación de

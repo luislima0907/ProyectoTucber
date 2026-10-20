@@ -1,6 +1,8 @@
 import '../css/ConfirmacionViaje.css'
 
 export function ConfirmacionViaje({ seleccion, onVolver }) {
+    const cotizacion = seleccion.cotizacion
+
     return (
         <main className="app-card confirmacion-viaje">
             <h1 className="brand-title">Revisa tu viaje</h1>
@@ -29,20 +31,22 @@ export function ConfirmacionViaje({ seleccion, onVolver }) {
 
                 <div>
                     <dt>Distancia</dt>
-                    <dd>Pendiente de calcular</dd>
+                    <dd>
+                        {cotizacion
+                            ? `${cotizacion.distanceKm} km`
+                            : 'Pendiente de calcular'}
+                    </dd>
                 </div>
 
                 <div>
                     <dt>Tarifa en quetzales</dt>
-                    <dd>Pendiente de calcular</dd>
+                    <dd>
+                        {cotizacion
+                            ? `${cotizacion.currencySymbol}${cotizacion.amount}`
+                            : 'Pendiente de calcular'}
+                    </dd>
                 </div>
             </dl>
-
-            <p className="aviso-cotizacion" role="status">
-                La tarifa aún no está disponible.
-                Podrás confirmar cuando se valide la cobertura
-                y se calcule el precio.
-            </p>
 
             <div className="acciones-confirmacion">
                 <button
@@ -56,16 +60,18 @@ export function ConfirmacionViaje({ seleccion, onVolver }) {
                 <button
                     type="button"
                     className="btn-submit"
-                    disabled
+                    disabled={!cotizacion}
                     aria-describedby="motivo-bloqueo"
                 >
                     Confirmar selección
                 </button>
             </div>
 
-            <small id="motivo-bloqueo">
-                Se necesita una cotización válida para confirmar.
-            </small>
+            {!cotizacion && (
+                <small id="motivo-bloqueo">
+                    Se necesita una cotización válida para confirmar.
+                </small>
+            )}
         </main>
     )
 }

@@ -2,18 +2,17 @@ export const TARIFA_CONFIG = {
     currency: 'GTQ',
     currencySymbol: 'Q',
     pilotZone: {
-        municipality: 'Jalapa',
         department: 'Jalapa',
         countryCode: 'GT'
     },
-    minimum: 3,
-    maximum: 20,
+    minimum: 5,
+    maximum: 25,
     distanceBands: [
-        { upToKm: 2, amount: 3 },
-        { upToKm: 5, amount: 6 },
-        { upToKm: 10, amount: 10 },
-        { upToKm: 15, amount: 15 },
-        { upToKm: Number.POSITIVE_INFINITY, amount: 20 }
+        { upToKm: 2, amount: 5 },
+        { upToKm: 5, amount: 10 },
+        { upToKm: 8, amount: 15 },
+        { upToKm: 12, amount: 20 },
+        { upToKm: Number.POSITIVE_INFINITY, amount: 25 }
     ]
 }
 

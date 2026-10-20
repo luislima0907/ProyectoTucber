@@ -27,6 +27,7 @@ export default class TarifaService {
             ...calcularTarifa(route.distanceMeters),
             distanceMeters: route.distanceMeters,
             durationSeconds: route.durationSeconds,
+            polyline: route.polyline,
             origin,
             destination
         }
@@ -51,16 +52,14 @@ export default class TarifaService {
 
     assertInPilotZone(address, pointName) {
         const components = address.address_components ?? []
-        const municipality = this.getComponent(components, 'administrative_area_level_2')
-        const department = this.getComponent(components, 'administrative_area_level_1')
+        const department = this.getComponent(components, 'administrative_area_level_1') ?? ''
         const country = this.getComponent(components, 'country', 'short_name')
         const zone = TARIFA_CONFIG.pilotZone
+        const dentroDelDepartamento = department
+            .toLowerCase()
+            .includes(zone.department.toLowerCase())
 
-        if (
-            municipality !== zone.municipality ||
-            department !== zone.department ||
-            country !== zone.countryCode
-        ) {
+        if (!dentroDelDepartamento || country !== zone.countryCode) {
             throw new Error(`El punto de ${pointName} está fuera de la zona piloto`)
         }
     }
@@ -75,7 +74,7 @@ export default class TarifaService {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Goog-Api-Key': this.apiKey,
-                'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration'
+                'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline'
             },
             body: JSON.stringify({
                 origin: {
@@ -111,7 +110,8 @@ export default class TarifaService {
 
         return {
             distanceMeters: route.distanceMeters,
-            durationSeconds: Number.parseInt(route.duration, 10)
+            durationSeconds: Number.parseInt(route.duration, 10),
+            polyline: route.polyline?.encodedPolyline ?? null
         }
     }
 }

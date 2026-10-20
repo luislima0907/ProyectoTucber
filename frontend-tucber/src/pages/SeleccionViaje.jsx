@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapaSeleccion } from '../components/MapaSeleccion'
+import { tarifaService } from '../services/tarifaService'
 import '../css/SeleccionViaje.css'
 import { ConfirmacionViaje } from './ConfirmacionViaje'
 
@@ -25,14 +26,47 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
     const [mensaje, setMensaje] = useState('')
     const [localizando, setLocalizando] = useState(false)
     const [resumen, setResumen] = useState(null)
+    const [cotizacion, setCotizacion] = useState(null)
+    const [errorRuta, setErrorRuta] = useState('')
 
     const solicitudUbicacion = useRef(0)
+    const solicitudCotizacion = useRef(0)
 
     const invalidarResultado = useCallback(() => {
         setResumen(null)
+        setCotizacion(null)
+        setErrorRuta('')
 
         onCambioSeleccion?.()
     }, [onCambioSeleccion])
+
+    const pedirCotizacion = useCallback((puntoOrigen, puntoDestino) => {
+        const solicitudActual = ++solicitudCotizacion.current
+
+        tarifaService.getQuote(puntoOrigen, puntoDestino)
+            .then(data => {
+                if (solicitudActual !== solicitudCotizacion.current) return
+                setErrorRuta('')
+                setCotizacion(data)
+            })
+            .catch(error => {
+                if (solicitudActual !== solicitudCotizacion.current) return
+                setCotizacion(null)
+                setErrorRuta(
+                    error.response?.data?.message ||
+                    'No se pudo calcular el recorrido. Intenta de nuevo.'
+                )
+            })
+    }, [])
+
+    useEffect(() => {
+        if (!coordenadasValidas(origen) || !coordenadasValidas(destino)) {
+            solicitudCotizacion.current += 1
+            return
+        }
+
+        pedirCotizacion(origen, destino)
+    }, [origen, destino, pedirCotizacion])
 
     const seleccionarPunto = useCallback((tipo, punto) => {
         if (!coordenadasValidas(punto)) return
@@ -113,11 +147,17 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
         )
     }
 
+    const puntosListos =
+        coordenadasValidas(origen) && coordenadasValidas(destino)
+
+    const calculandoRuta = puntosListos && !cotizacion && !errorRuta
+
     const puedeContinuar =
         coordenadasValidas(origen) &&
         coordenadasValidas(destino) &&
         descripcionOrigen.trim().length > 0 &&
-        descripcionDestino.trim().length > 0
+        descripcionDestino.trim().length > 0 &&
+        Boolean(cotizacion)
 
     function continuar() {
         if (!puedeContinuar) return
@@ -131,7 +171,8 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
                 ...destino,
                 descripcion: descripcionDestino.trim()
             },
-            referenciaRecogida: referencia.trim()
+            referenciaRecogida: referencia.trim(),
+            cotizacion
         }
 
         setResumen(seleccion)
@@ -152,7 +193,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
             <h1 className="brand-title">Prepara tu viaje</h1>
 
             <p>
-                Cobertura: municipio de Jalapa, Guatemala.
+                Cobertura: departamento de Jalapa, Guatemala.
             </p>
 
             <div className="form-group">
@@ -229,10 +270,37 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
                 origen={origen}
                 destino={destino}
                 centro={centro}
+                ruta={cotizacion?.polyline}
                 onSeleccionar={seleccionarPunto}
             />
 
             <p role="status">{mensaje}</p>
+
+            {calculandoRuta && <p role="status">Calculando recorrido…</p>}
+
+            {errorRuta && (
+                <div className="error-cotizacion" role="alert">
+                    <p>{errorRuta}</p>
+                    <button
+                        type="button"
+                        className="btn-reintentar"
+                        onClick={() => {
+                            setErrorRuta('')
+                            pedirCotizacion(origen, destino)
+                        }}
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            )}
+
+            {cotizacion && (
+                <p className="resumen-recorrido" role="status">
+                    Distancia aproximada: {cotizacion.distanceKm} km ·
+                    {' '}Tarifa: {cotizacion.currencySymbol}
+                    {cotizacion.amount}
+                </p>
+            )}
 
             {!puedeContinuar && (
                 <p>
