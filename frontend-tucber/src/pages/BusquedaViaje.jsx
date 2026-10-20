@@ -8,7 +8,10 @@ import '../css/ConfirmacionViaje.css'
 import '../css/BusquedaViaje.css'
 import { PerfilConductor } from '../components/PerfilConductor'
 
-export function BusquedaViaje({ solicitud }) {
+const INTERVALO_CONSULTA = 4000
+
+export function BusquedaViaje({ solicitud,onReintentar,
+    onCambiarRecogida }) {
     const [solicitudActual, setSolicitudActual] = useState(solicitud)
     const [cargando, setCargando] = useState(true)
     const [error, setError] = useState('')
@@ -18,19 +21,39 @@ export function BusquedaViaje({ solicitud }) {
     const [aceptacionPendiente, setAceptacionPendiente] = useState(false)
     const [ahora, setAhora] = useState(Date.now())
     const [ofertaSeleccionadaId, setOfertaSeleccionadaId] = useState(null)
+    const [mostrarCancelacion, setMostrarCancelacion] = useState(false)
 
     const accionEnCurso = useRef(false)
 
     // Consulta al abrir la pantalla o al presionar Actualizar.
     useEffect(() => {
         let pantallaActiva = true
+        let temporizador
+        const control = new AbortController()
+
+        // No consultar mientras se está decidiendo sobre una oferta.
+        if (
+            aceptando !== null ||
+            descartando !== null ||
+            aceptacionPendiente
+        ) {
+            return
+        }
+
+        // Detener las consultas cuando ya no está buscando.
+        if (solicitudActual?.status !== 'buscando') {
+            setCargando(false)
+            return
+        }
 
         async function consultarOfertas() {
             setCargando(true)
-            setError('')
+            let continuar = true
 
             try {
-                const actual = await viajeService.consultarActual()
+                const actual = await viajeService.consultarActual(
+                    control.signal
+                )
 
                 if (!pantallaActiva) return
 
@@ -41,13 +64,26 @@ export function BusquedaViaje({ solicitud }) {
                 }
 
                 setSolicitudActual(actual)
+                setError('')
+
+                continuar = actual?.status === 'buscando'
             } catch (errorConsulta) {
-                if (pantallaActiva) {
-                    setError(mensajeViaje(errorConsulta))
-                }
+                if (!pantallaActiva) return
+
+                setError(
+                    'No podemos confirmar el estado de tu solicitud. ' +
+                    mensajeViaje(errorConsulta)
+                )
             } finally {
                 if (pantallaActiva) {
                     setCargando(false)
+
+                    if (continuar) {
+                        temporizador = setTimeout(
+                            consultarOfertas,
+                            INTERVALO_CONSULTA
+                        )
+                    }
                 }
             }
         }
@@ -56,8 +92,17 @@ export function BusquedaViaje({ solicitud }) {
 
         return () => {
             pantallaActiva = false
+            clearTimeout(temporizador)
+            control.abort()
         }
-    }, [solicitud.id, actualizacion])
+    }, [
+        solicitud.id,
+        solicitudActual?.status,
+        actualizacion,
+        aceptando,
+        descartando,
+        aceptacionPendiente
+    ])
 
     // Actualiza la hora para comprobar los vencimientos.
     useEffect(() => {
@@ -70,10 +115,15 @@ export function BusquedaViaje({ solicitud }) {
 
     const ofertas = solicitudActual?.offers ?? []
 
+    const vencimiento = Date.parse(solicitudActual?.expiresAt)
+
+    const segundosRestantes = Number.isFinite(vencimiento)
+        ? Math.max(0, Math.ceil((vencimiento - ahora) / 1000))
+        : null
+
     const plazoCumplido =
         solicitudActual?.status === 'buscando' &&
-        ahora >= Date.parse(solicitudActual.expiresAt)
-
+        segundosRestantes === 0
     const buscando =
         solicitudActual?.status === 'buscando' &&
         !plazoCumplido
@@ -258,6 +308,16 @@ export function BusquedaViaje({ solicitud }) {
         }
     }
 
+    const puedePrepararOtro =
+        !cargando &&
+        !error &&
+        !aceptacionPendiente &&
+        (
+            solicitudActual === null ||
+            solicitudActual?.status === 'vencida' ||
+            solicitudActual?.status === 'cancelada'
+        )
+
     return (
         <main className="app-card confirmacion-viaje">
             <h1 className="brand-title">
@@ -288,10 +348,13 @@ export function BusquedaViaje({ solicitud }) {
 
                 {solicitudActual?.status === 'buscando' && (
                     <div>
-                        <dt>Vencimiento de búsqueda</dt>
+                        <dt>Tiempo restante de búsqueda</dt>
                         <dd>
-                            {new Date(solicitudActual.expiresAt)
-                                .toLocaleString('es-GT')}
+                            {segundosRestantes === null
+                                ? 'Tiempo no disponible'
+                                : segundosRestantes > 0
+                                    ? `${segundosRestantes} segundos`
+                                    : 'Comprobando el estado de la búsqueda'}
                         </dd>
                     </div>
                 )}
@@ -303,6 +366,13 @@ export function BusquedaViaje({ solicitud }) {
                         ? 'Ofertas de conductores'
                         : 'Estado del viaje'}
                 </h2>
+                {buscando && !cargando && !error && (
+                    <p role="status">
+                        {ofertasVigentes.length === 0
+                            ? 'Estamos buscando un conductor disponible.'
+                            : 'Tienes ofertas disponibles para revisar.'}
+                    </p>
+                )}
 
                 {cargando && (
                     <p role="status">Consultando solicitud...</p>
@@ -317,7 +387,7 @@ export function BusquedaViaje({ solicitud }) {
                 {plazoCumplido && (
                     <p role="status">
                         Se alcanzó el plazo de búsqueda.
-                        Actualiza para comprobar el estado de tu solicitud.
+                        Estamos consultando su estado con el servidor.
                     </p>
                 )}
 
@@ -354,7 +424,7 @@ export function BusquedaViaje({ solicitud }) {
                 {!cargando &&
                     buscando &&
                     ofertasVigentes.length === 0 && (
-                        <p>Aún no hay ofertas vigentes de conductores.</p>
+                        <p>Las ofertas aparecerán aquí cuando estén disponibles</p>
                     )}
 
                 {!cargando && buscando && !ofertaSeleccionada && (
@@ -408,6 +478,82 @@ export function BusquedaViaje({ solicitud }) {
                     >
                         {cargando ? 'Consultando...' : 'Actualizar ofertas'}
                     </button>
+                )}
+
+                {puedePrepararOtro && (
+                    <div className="acciones-oferta">
+                        <button
+                            type="button"
+                            className="btn-oferta btn-aceptar"
+                            disabled={!onReintentar}
+                            onClick={onReintentar}
+                        >
+                            Volver a cotizar
+                        </button>
+
+                        <button
+                            type="button"
+                            className="btn-oferta btn-actualizar"
+                            disabled={!onCambiarRecogida}
+                            onClick={onCambiarRecogida}
+                        >
+                            Cambiar recogida
+                        </button>
+                    </div>
+                )}
+                
+                {buscando && (
+                    <div className="cancelacion-viaje">
+                        {!mostrarCancelacion ? (
+                            <button
+                                type="button"
+                                className="btn-oferta btn-descartar"
+                                disabled={accionesBloqueadas}
+                                onClick={() => setMostrarCancelacion(true)}
+                            >
+                                Cancelar búsqueda
+                            </button>
+                        ) : (
+                            <div
+                                className="confirmar-cancelacion"
+                                role="region"
+                                aria-labelledby="titulo-cancelacion"
+                            >
+                                <h3 id="titulo-cancelacion">
+                                    ¿Quieres cancelar la búsqueda?
+                                </h3>
+
+                                <p>
+                                    Al confirmar la cancelación, dejarías de buscar
+                                    conductor para esta solicitud.
+                                </p>
+
+                                <p className="aviso-cancelacion">
+                                    La cancelación todavía no está disponible.
+                                    Tu búsqueda continúa activa hasta que termine
+                                    su plazo o aceptes una oferta.
+                                </p>
+
+                                <div className="acciones-oferta">
+                                    <button
+                                        type="button"
+                                        className="btn-oferta btn-actualizar"
+                                        onClick={() => setMostrarCancelacion(false)}
+                                    >
+                                        Seguir buscando
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn-oferta btn-descartar"
+                                        disabled
+                                    >
+                                        Confirmar cancelación
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
             </section>
         </main>
