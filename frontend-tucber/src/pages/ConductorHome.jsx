@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react'
 import { ConductorProfileForm } from '../components/ConductorProfileForm'
 import { SolicitudesDisponibles } from '../components/SolicitudesDisponibles'
 import { ControlCancelacionViaje } from '../components/ControlCancelacionViaje'
+import { VerificarPinViaje } from '../components/VerificarPinViaje'
+import { viajeService } from '../services/viajeService'
 import '../css/ConductorSolicitudes.css'
 
 export function ConductorHome({ user, onLogout }) {
     const [currentView, setCurrentView] = useState('home')
     const [viajeActivo, setViajeActivo] = useState(null)
+    const [confirmandoLlegada, setConfirmandoLlegada] = useState(false)
+    const [errorLlegada, setErrorLlegada] = useState('')
 
     useEffect(() => {
         let cancelado = false
 
         const consultarViaje = async () => {
             try {
-                const res = await fetch('http://localhost:3001/solicitudes/actual', {
+                const res = await fetch('http://localhost:3001/drivers/requests/current', {
                     credentials: 'include'
                 })
                 if (res.ok) {
@@ -36,11 +40,36 @@ export function ConductorHome({ user, onLogout }) {
         return () => {
             cancelado = true
         }
-    }, [])
+    }, [currentView])
 
     const handleCancelacionExitosa = () => {
         setViajeActivo(null)
         setCurrentView('requests')
+    }
+
+    const handleVerificarPin = async (idSolicitud, pin) => {
+        const solicitud = await viajeService.iniciarViaje(idSolicitud, pin)
+        setViajeActivo(solicitud)
+        return solicitud
+    }
+
+    const handleConfirmarLlegada = async () => {
+        if (confirmandoLlegada || !viajeActivo) return
+
+        setConfirmandoLlegada(true)
+        setErrorLlegada('')
+
+        try {
+            const solicitud = await viajeService.confirmarLlegada(viajeActivo.id)
+            setViajeActivo(solicitud)
+        } catch (error) {
+            setErrorLlegada(
+                error.response?.data?.message ||
+                'No se pudo confirmar la llegada. Comprueba el estado del viaje antes de intentarlo nuevamente.'
+            )
+        } finally {
+            setConfirmandoLlegada(false)
+        }
     }
 
     return (
@@ -96,8 +125,35 @@ export function ConductorHome({ user, onLogout }) {
                             <div className="conductor-viaje-activo" style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                                 <h2>Viaje en curso</h2>
                                 <p><strong>Solicitud #:</strong> {viajeActivo.id || viajeActivo.solicitudId}</p>
-                                <p><strong>Estado:</strong> {viajeActivo.estado}</p>
+                                <p><strong>Estado:</strong> {viajeActivo.status}</p>
                                 
+                                {viajeActivo.status === 'aceptada' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirmarLlegada}
+                                        disabled={confirmandoLlegada}
+                                    >
+                                        {confirmandoLlegada ? 'Confirmando llegada...' : 'Confirmar llegada'}
+                                    </button>
+                                )}
+
+                                {errorLlegada && (
+                                    <p role="alert">{errorLlegada}</p>
+                                )}
+                                
+                                {viajeActivo.status === 'en_recogida' && (
+                                    <VerificarPinViaje
+                                        viaje={{
+                                            id: viajeActivo.id || viajeActivo.solicitudId,
+                                            pasajero: viajeActivo.pasajero || 'Pasajero asignado',
+                                            destino: viajeActivo.destination
+                                                ?`${viajeActivo.destination.latitude}, ${viajeActivo.destination.longitude}`
+                                                : 'Destino no disponible'
+                                        }}
+                                        onVerificar={handleVerificarPin}
+                                    />
+                                )}
+
                                 <div style={{ marginTop: '20px' }}>
                                     <ControlCancelacionViaje 
                                         viajeId={viajeActivo.id || viajeActivo.solicitudId} 
