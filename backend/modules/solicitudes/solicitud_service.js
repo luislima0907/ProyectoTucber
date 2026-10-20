@@ -65,9 +65,9 @@ export default class SolicitudService{
                         SET estado = 'en_recogida',
                             llegadaAt = COALESCE(llegadaAt, now()),
                             pin = COALESCE(pin, $3),
-                            "pinIntentosFallidos" = 0,
-                            "pinBloqueadoHasta" = NULL,
-                            "pinConsumido" = false
+                            "pinintentosfallidos" = 0,
+                            "pinbloqueadohasta" = NULL,
+                            "pinconsumido" = false
                       WHERE idSolicitud = $1
                         AND idConductor = $2
                         AND estado = 'aceptada'
@@ -169,8 +169,8 @@ export default class SolicitudService{
                 }
                 await client.query(
                     `UPDATE solicitudes
-                       SET "pinIntentosFallidos" = $1,
-                           "pinBloqueadoHasta" = $2
+                       SET "pinintentosfallidos" = $1,
+                           "pinbloqueadohasta" = $2
                      WHERE idSolicitud = $3`,
                     [nuevosIntentos, bloqueoHasta, idSolicitud]
                 )
@@ -182,10 +182,10 @@ export default class SolicitudService{
             const result = await client.query(
                 `UPDATE solicitudes
                    SET estado = 'en_curso',
-                       "iniciadoAt" = now(),
-                       "pinConsumido" = true,
-                       "pinIntentosFallidos" = 0,
-                       "pinBloqueadoHasta" = NULL
+                       "iniciadoat" = now(),
+                       "pinconsumido" = true,
+                       "pinintentosfallidos" = 0,
+                       "pinbloqueadohasta" = NULL
                  WHERE idSolicitud = $1
                  RETURNING *`,
                 [idSolicitud]

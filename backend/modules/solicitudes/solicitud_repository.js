@@ -91,7 +91,7 @@ export default class SolicitudRepository{
             `UPDATE solicitudes
                 SET estado = 'en_recogida',
                     llegadaAt = COALESCE(llegadaAt, now()),
-                    pin = COALESCE(pin, LPAD(floor(random()*1000000)::text, 6, '0'))
+                    pin = COALESCE(pin, LPAD(floor(random()*10000)::text, 4, '0'))
               WHERE idSolicitud = $1
                 AND idConductor = $2
                 AND estado = 'aceptada'
