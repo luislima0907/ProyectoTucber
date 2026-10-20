@@ -48,12 +48,14 @@ export default class SolicitudController{
             if (error.code === 'ACTIVE_REQUEST'){
                 return res.status(409).json({ message: error.message })
             }
-            const message = error.message ?? ''
-            if (message.includes('zona piloto') || message.includes('punto') || message.includes('ruta')){
-                return res.status(400).json({ message })
+            if (error.code === 'ZONE'){
+                return res.status(400).json({ message: error.message })
+            }
+            if (error.code === 'UPSTREAM'){
+                return res.status(502).json({ message: error.message })
             }
             console.error('Error al crear solicitud:', error)
-            return res.status(502).json({ message: 'No se pudo calcular la solicitud en el servidor.' })
+            return res.status(500).json({ message: 'No se pudo crear la solicitud.' })
         }
     }
 

@@ -11,7 +11,9 @@ export default class TarifaService {
 
     async calculateQuote(origin, destination) {
         if (!this.apiKey) {
-            throw new Error('El backend no tiene configurada la clave de Google Maps')
+            const error = new Error('El backend no tiene configurada la clave de Google Maps')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const [originAddress, destinationAddress] = await Promise.all([
@@ -27,6 +29,7 @@ export default class TarifaService {
             ...calcularTarifa(route.distanceMeters),
             distanceMeters: route.distanceMeters,
             durationSeconds: route.durationSeconds,
+            polyline: route.polyline,
             origin,
             destination
         }
@@ -39,29 +42,33 @@ export default class TarifaService {
         })
         const response = await this.fetch(`${GOOGLE_GEOCODING_URL}?${params}`)
         if (!response.ok) {
-            throw new Error('No se pudo validar la zona del punto')
+            const error = new Error('No se pudo validar la zona del punto')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const data = await response.json()
         if (data.status !== 'OK' || !data.results?.length) {
-            throw new Error('No se pudo ubicar uno de los puntos en el mapa')
+            const error = new Error('No se pudo ubicar uno de los puntos en el mapa')
+            error.code = 'UPSTREAM'
+            throw error
         }
         return data.results[0]
     }
 
     assertInPilotZone(address, pointName) {
         const components = address.address_components ?? []
-        const municipality = this.getComponent(components, 'administrative_area_level_2')
-        const department = this.getComponent(components, 'administrative_area_level_1')
+        const department = this.getComponent(components, 'administrative_area_level_1') ?? ''
         const country = this.getComponent(components, 'country', 'short_name')
         const zone = TARIFA_CONFIG.pilotZone
+        const dentroDelDepartamento = department
+            .toLowerCase()
+            .includes(zone.department.toLowerCase())
 
-        if (
-            municipality !== zone.municipality ||
-            department !== zone.department ||
-            country !== zone.countryCode
-        ) {
-            throw new Error(`El punto de ${pointName} está fuera de la zona piloto`)
+        if (!dentroDelDepartamento || country !== zone.countryCode) {
+            const error = new Error(`El punto de ${pointName} está fuera de la zona piloto`)
+            error.code = 'ZONE'
+            throw error
         }
     }
 
@@ -75,7 +82,7 @@ export default class TarifaService {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Goog-Api-Key': this.apiKey,
-                'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration'
+                'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline'
             },
             body: JSON.stringify({
                 origin: {
@@ -100,18 +107,23 @@ export default class TarifaService {
         })
 
         if (!response.ok) {
-            throw new Error('Google Maps no pudo calcular la ruta')
+            const error = new Error('Google Maps no pudo calcular la ruta')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const data = await response.json()
         const route = data.routes?.[0]
         if (!route?.distanceMeters || !route.duration) {
-            throw new Error('No existe una ruta disponible entre los puntos')
+            const error = new Error('No existe una ruta disponible entre los puntos')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         return {
             distanceMeters: route.distanceMeters,
-            durationSeconds: Number.parseInt(route.duration, 10)
+            durationSeconds: Number.parseInt(route.duration, 10),
+            polyline: route.polyline?.encodedPolyline ?? null
         }
     }
 }

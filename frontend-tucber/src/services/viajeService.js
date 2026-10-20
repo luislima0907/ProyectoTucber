@@ -44,8 +44,7 @@ export const viajeService = {
 
         if (
             !Number.isFinite(data.amount) ||
-            data.amount < 3 ||
-            data.amount > 20 ||
+            data.amount < 0 ||
             !Number.isFinite(data.distanceKm) ||
             data.distanceKm < 0 ||
             data.currency !== 'GTQ' ||
