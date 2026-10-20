@@ -11,6 +11,7 @@ import '../css/ConfirmacionViaje.css'
 export function ConfirmacionViaje({
     seleccion,
     onVolver,
+    onReintentar,
     onBloqueoCambio
 }) {
     const [cotizacion, setCotizacion] = useState(null)
@@ -159,7 +160,13 @@ export function ConfirmacionViaje({
     }
 
     if (solicitud) {
-        return <BusquedaViaje solicitud={solicitud} />
+        return (
+            <BusquedaViaje
+                solicitud={solicitud}
+                onReintentar={onReintentar}
+                onCambiarRecogida={onVolver}
+            />
+        )
     }
 
     return (
