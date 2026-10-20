@@ -373,7 +373,7 @@ Reglas:
 
 - Solo permite la transición desde `aceptada` hacia `en_recogida`.
 - Al marcar por primera vez se registra `llegadaAt` con la hora del servidor.
-- Si aún no existe, se genera un PIN de 6 dígitos y se guarda en la solicitud.
+- Si aún no existe, se genera un PIN de 4 dígitos y se guarda en la solicitud.
 - Si ya está en `en_recogida` o ya existe `llegadaAt`, la operación es
   idempotente: no se modifica la hora ni se regenera el PIN. Se devuelve el
   estado actual.
@@ -435,7 +435,7 @@ Respuesta exitosa (`200 OK`):
 
 ```json
 {
-  "pin": "123456"
+  "pin": "1234"
 }
 ```
 
@@ -450,3 +450,96 @@ llegada o viaje no disponible), `500` (error inesperado).
 - Las consultas del conductor para viaje actual consideran `en_recogida`.
 - La migración `006_llegada_y_pin_migration.js` añade las columnas y amplía el
   `CHECK` de estados sin eliminar datos existentes.
+
+## Validar PIN para iniciar el viaje (en_curso)
+
+Una vez que el conductor marcó su llegada y la solicitud está en `en_recogida`,
+el viaje se inicia validando el PIN que recibió el cliente.
+
+### Endpoint para validar el PIN
+
+```http
+POST /drivers/requests/:id/validate-pin
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+### Cuerpo
+
+```json
+{
+  "pin": "1234"
+}
+```
+
+Requiere rol `conductor`. Solo el conductor asignado a la solicitud puede
+validar el PIN.
+
+### Reglas de validación
+
+- El PIN debe tener exactamente 4 dígitos.
+- La solicitud debe existir, pertenecer al conductor y estar en estado
+  `en_recogida` con `llegadaAt` registrada.
+- Si el PIN ya fue consumido (`pinConsumido = true`) o el viaje ya está
+  `en_curso`, se rechaza con `409`.
+- Si el PIN está bloqueado temporalmente (`pinBloqueadoHasta > now()`), se
+  rechaza con `409`. Durante el bloqueo no se valida el PIN.
+- Si el PIN es incorrecto:
+  - Se incrementa `pinIntentosFallidos`.
+  - Al alcanzar 5 fallos consecutivos, se establece `pinBloqueadoHasta` a
+    5 minutos en el futuro (hora del servidor).
+  - No cambia el estado del viaje. Se rechaza con `409`.
+- Si el PIN es correcto, en una transacción con `SELECT ... FOR UPDATE`:
+  - Se pasa el estado a `en_curso`.
+  - Se registra `iniciadoAt` con la hora del servidor.
+  - Se marca `pinConsumido = true`.
+  - Se resetean `pinIntentosFallidos = 0` y `pinBloqueadoHasta = NULL`.
+  - El PIN solo puede utilizarse una vez.
+
+### Respuesta exitosa (`200 OK`)
+
+```json
+{
+  "solicitud": {
+    "id": 123,
+    "origin": { "latitude": 14.6349, "longitude": -89.9886 },
+    "destination": { "latitude": 14.6412, "longitude": -89.9765 },
+    "reference": "Frente al parque central",
+    "distanceMeters": 1850,
+    "amount": 15,
+    "currency": "GTQ",
+    "status": "en_curso",
+    "createdAt": "2026-10-20T01:20:00.000Z",
+    "expiresAt": "2026-10-20T01:21:30.000Z",
+    "llegadaAt": "2026-10-20T01:23:45.000Z",
+    "iniciadoAt": "2026-10-20T01:25:10.000Z",
+    "driverId": 7,
+    "offers": []
+  }
+}
+```
+
+### Códigos de error
+
+| Código | Situación |
+| --- | --- |
+| `400` | Identificador inválido o PIN sin formato de 4 dígitos. |
+| `401` | Sin sesión válida. |
+| `403` | No es el conductor asignado o rol incorrecto. |
+| `404` | La solicitud no existe. |
+| `409` | Viaje no está en `en_recogida`, PIN consumido, PIN bloqueado, PIN incorrecto, o viaje cancelado/completado/vencido. |
+| `500` | Error inesperado del servidor. |
+
+### Persistencia y bloqueo
+
+- `pinIntentosFallidos` y `pinBloqueadoHasta` se persisten en la base de
+  datos. Recargar la página o cambiar de navegador no reinicia los intentos.
+- Tras 5 fallos consecutivos, el bloqueo dura 5 minutos. Al expirar, se
+  permite un nuevo ciclo de intentos sin regenerar el PIN.
+- La transacción con `FOR UPDATE` garantiza que dos validaciones correctas
+  simultáneas produzcan un único inicio.
+- Un viaje sin `llegadaAt`, con PIN consumido, o accedido por otro conductor
+  no puede iniciarse.
+- La migración `007_pin_validacion_migration.js` añade las columnas
+  `pin` (4 dígitos), `pinIntentosFallidos`, `pinBloqueadoHasta`,
+  `pinConsumido` e `iniciadoAt` sin eliminar datos existentes.
