@@ -28,6 +28,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion,  onBloqueoCambi
     const [resumen, setResumen] = useState(null)
     const [cotizacion, setCotizacion] = useState(null)
     const [errorRuta, setErrorRuta] = useState('')
+    const [numeroIntento, setNumeroIntento] = useState(0)
 
     const solicitudUbicacion = useRef(0)
     const solicitudCotizacion = useRef(0)
@@ -185,8 +186,12 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion,  onBloqueoCambi
     if (resumen) {
         return (
             <ConfirmacionViaje
+                key={numeroIntento}
                 seleccion={resumen}
                 onVolver={() => setResumen(null)}
+                onReintentar={() => {
+                    setNumeroIntento(valor => valor + 1)
+                }}
                 onBloqueoCambio={onBloqueoCambio}
             />
         )

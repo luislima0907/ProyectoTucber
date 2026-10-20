@@ -114,3 +114,30 @@
 .perfil-conductor dd {
     overflow-wrap: anywhere;
 }
+
+.cancelacion-viaje {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8e5;
+}
+
+.confirmar-cancelacion {
+    padding: 1rem;
+    border: 1px solid #e2e8e5;
+    border-radius: 14px;
+    background: #fafcfb;
+}
+
+.confirmar-cancelacion h3 {
+    margin-top: 0;
+}
+
+.aviso-cancelacion {
+    color: #6b7c76;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.confirmar-cancelacion .btn-actualizar {
+    margin-top: 0;
+}

@@ -17,6 +17,10 @@ export default class SolicitudController{
         this.service = service
         router.post('/solicitudes', (req, res) => this.create(req, res))
         router.get('/solicitudes/actual', (req, res) => this.getCurrent(req, res))
+        router.get('/solicitudes/actual/pin', (req, res) => this.getPinCurrent(req, res))
+        router.get('/solicitudes/:id/pin', (req, res) => this.getPin(req, res))
+        router.post('/solicitudes/:id/llegada', (req, res) => this.marcarLlegada(req, res))
+        router.post('/drivers/requests/:id/arrive', (req, res) => this.marcarLlegada(req, res))
     }
 
     resolveClient(req, res){
@@ -27,6 +31,19 @@ export default class SolicitudController{
         }
         if (req.user?.rol !== 'cliente'){
             res.status(403).json({ message: 'Solo los clientes pueden crear solicitudes.' })
+            return null
+        }
+        return idUsuario
+    }
+
+    resolveDriver(req, res){
+        const idUsuario = Number(req.user?.sub)
+        if (!Number.isInteger(idUsuario) || idUsuario <= 0){
+            res.status(401).json({ message: 'Token sin identidad de usuario. Inicia sesión de nuevo.' })
+            return null
+        }
+        if (req.user?.rol !== 'conductor'){
+            res.status(403).json({ message: 'Solo los conductores pueden realizar esta acción.' })
             return null
         }
         return idUsuario
@@ -69,6 +86,86 @@ export default class SolicitudController{
         }catch(error){
             console.error('Error al consultar solicitud:', error)
             return res.status(500).json({ message: 'No se pudo consultar la solicitud.' })
+        }
+    }
+
+    async marcarLlegada(req, res){
+        const idConductor = this.resolveDriver(req, res)
+        if (idConductor === null) return
+
+        const idSolicitud = Number(req.params.id)
+        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
+            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
+        }
+
+        try{
+            const solicitud = await this.service.marcarLlegada(idConductor, idSolicitud)
+            return res.status(200).json({ solicitud })
+        }catch(error){
+            if (error.code === 'NOT_FOUND'){
+                return res.status(404).json({ message: error.message })
+            }
+            if (error.code === 'FORBIDDEN'){
+                return res.status(403).json({ message: error.message })
+            }
+            if (error.code === 'CONFLICT'){
+                return res.status(409).json({ message: error.message })
+            }
+            console.error('Error al marcar llegada:', error)
+            return res.status(500).json({ message: 'No se pudo marcar la llegada.' })
+        }
+    }
+
+    async getPin(req, res){
+        const idUsuario = this.resolveClient(req, res)
+        if (idUsuario === null) return
+
+        const idSolicitud = Number(req.params.id)
+        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
+            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
+        }
+
+        try{
+            const result = await this.service.obtenerPin(idUsuario, idSolicitud)
+            return res.status(200).json(result)
+        }catch(error){
+            if (error.code === 'NOT_FOUND'){
+                return res.status(404).json({ message: error.message })
+            }
+            if (error.code === 'FORBIDDEN'){
+                return res.status(403).json({ message: error.message })
+            }
+            if (error.code === 'CONFLICT'){
+                return res.status(409).json({ message: error.message })
+            }
+            console.error('Error al obtener PIN:', error)
+            return res.status(500).json({ message: 'No se pudo obtener el PIN.' })
+        }
+    }
+
+    async getPinCurrent(req, res){
+        const idUsuario = this.resolveClient(req, res)
+        if (idUsuario === null) return
+
+        try{
+            const row = await this.service.repository.findCurrentForClient(idUsuario)
+            if (!row){
+                return res.status(404).json({ message: 'No hay una solicitud activa.' })
+            }
+            const result = await this.service.obtenerPin(idUsuario, row.idsolicitud)
+            return res.status(200).json(result)
+        }catch(error){
+            if (error.code === 'NOT_FOUND'){
+                return res.status(404).json({ message: error.message })
+            }
+            if (error.code === 'FORBIDDEN'){
+                return res.status(403).json({ message: error.message })
+            }
+            if (error.code === 'CONFLICT'){
+                return res.status(409).json({ message: error.message })
+            }
+            console.error('Error al obtener PIN:', error)
+            return res.status(500).json({ message: 'No se pudo obtener el PIN.' })
         }
     }
 }
