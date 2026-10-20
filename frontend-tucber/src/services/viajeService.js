@@ -26,6 +26,35 @@ export function prepararPuntos(seleccion) {
 }
 
 export const viajeService = {
+    async iniciarViaje(idSolicitud, pin){
+        if (!Number.isInteger(Number(idSolicitud)) || Number(idSolicitud) <= 0){
+            throw new Error('No se ha identificado una solicitud válida.')
+        }
+
+        if(!/^\d{4}$/.test(pin)){
+            throw new Error('El PIN debe contener exactamente 4 dígitos.')
+        }
+
+        const { data } = await api.post(
+             `/drivers/requests/${idSolicitud}/validate-pin`,
+             { pin }
+        )
+
+        return data.solicitud
+    },
+
+    async confirmarLlegada(idSolicitud) {
+        if (!Number.isInteger(Number(idSolicitud)) || Number(idSolicitud) <= 0) {
+            throw new Error('No se ha identificado una solicitud válida.')
+        }
+
+        const { data } = await api.post(
+            `/drivers/requests/${idSolicitud}/arrive`
+        )
+
+        return data.solicitud
+    },
+    
     async consultarActual(signal){
         const {data} = await api.get(
             '/solicitudes/actual',
