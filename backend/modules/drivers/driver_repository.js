@@ -120,7 +120,7 @@ export default class DriverRepository{
             `SELECT *
              FROM solicitudes
              WHERE idConductor = $1
-               AND estado IN ('aceptada', 'en_curso')
+               AND estado IN ('aceptada', 'en_recogida' ,'en_curso')
              ORDER BY createAt DESC
              LIMIT 1`,
             [idConductor]
