@@ -26,6 +26,57 @@ export function prepararPuntos(seleccion) {
 }
 
 export const viajeService = {
+    async consultarActual(signal){
+        const {data} = await api.get(
+            '/solicitudes/actual',
+            {
+                signal,
+                timeout: 15000
+            }
+        )
+
+        if(!data || !Object.hasOwn(data, 'solicitud')){
+            throw new Error(
+                'No se pudo obtener el estado de tu solicitud.'
+            )
+        }
+
+        return data.solicitud
+    },
+
+    async aceptarOferta(idOferta){
+        const {data} = await api.post(
+            '/ofertas/' + idOferta + '/aceptar',
+            {},
+            { timeout: 15000}
+        )
+        if(!data?.solicitud){
+            const error = new Error(
+                'No se pudo comprobar la asignación del conductor'
+            )
+
+            error.resultadoIncierto = true
+            throw error
+        }
+        return data.solicitud
+    },
+
+    async descartarOferta(idOferta){
+        const { data } = await api.post(
+            '/ofertas/' + idOferta + '/descartar',
+            {},
+            { timeout:15000 }
+        )
+
+        if(!data?.oferta){
+            throw new Error(
+                'No se pudo comprbar que la oferta fue descartada'
+            )
+        }
+
+        return data.oferta
+    },
+
     async cotizar(seleccion, signal) {
         const puntos = prepararPuntos(seleccion)
 

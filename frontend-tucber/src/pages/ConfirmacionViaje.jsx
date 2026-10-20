@@ -20,6 +20,7 @@ export function ConfirmacionViaje({
     const [estadoEnvio, setEstadoEnvio] = useState('listo')
     const [errorEnvio, setErrorEnvio] = useState('')
     const [solicitud, setSolicitud] = useState(null)
+    const [consultandoViaje, setConsultandoViaje] = useState(false)
 
     const intento = useRef(null)
     const enviando = useRef(false)
@@ -28,16 +29,17 @@ export function ConfirmacionViaje({
 
     const bloqueado =
         estadoEnvio === 'procesando' ||
-        estadoEnvio === 'incierto'
+        estadoEnvio === 'incierto' ||
+        consultandoViaje
 
-    // Avisa al inicio para que no permita salir durante el envío.
+    // Bloquea la navegación mientras se resuelve una operación.
     useEffect(() => {
         onBloqueoCambio?.(bloqueado)
 
         return () => onBloqueoCambio?.(false)
     }, [bloqueado, onBloqueoCambio])
 
-    // Consulta la tarifa de los puntos actuales.
+    // Consulta la tarifa e ignora respuestas de selecciones anteriores.
     useEffect(() => {
         const control = new AbortController()
         let vigente = true
@@ -84,8 +86,43 @@ export function ConfirmacionViaje({
             ? errorCotizacion.mensaje
             : ''
 
+    // Recupera el viaje que ya existe, sin crear otro.
+    async function verViajeActivo() {
+        if (consultandoViaje || enviando.current) return
+
+        enviando.current = true
+        setConsultandoViaje(true)
+        setErrorEnvio('')
+
+        try {
+            const actual = await viajeService.consultarActual()
+
+            if (!actual) {
+                setErrorEnvio(
+                    'No tienes un viaje activo en este momento.'
+                )
+                return
+            }
+
+            setSolicitud(actual)
+            setEstadoEnvio('enviado')
+        } catch (errorConsulta) {
+            setErrorEnvio(mensajeViaje(errorConsulta))
+        } finally {
+            enviando.current = false
+            setConsultandoViaje(false)
+        }
+    }
+
+    // Envía la solicitud y conserva el mismo intento al reintentar.
     async function confirmar() {
-        if (enviando.current || solicitud) return
+        if (
+            enviando.current ||
+            consultandoViaje ||
+            solicitud
+        ) {
+            return
+        }
 
         if (!tarifaActual && estadoEnvio !== 'incierto') {
             return
@@ -128,7 +165,9 @@ export function ConfirmacionViaje({
     return (
         <main
             className="app-card confirmacion-viaje"
-            aria-busy={estadoEnvio === 'procesando'}
+            aria-busy={
+                estadoEnvio === 'procesando' || consultandoViaje
+            }
         >
             <h1 className="brand-title">Revisa tu viaje</h1>
 
@@ -190,6 +229,19 @@ export function ConfirmacionViaje({
                 </p>
             )}
 
+            {estadoEnvio === 'rechazado' && (
+                <button
+                    type="button"
+                    className="btn-submit"
+                    disabled={consultandoViaje}
+                    onClick={verViajeActivo}
+                >
+                    {consultandoViaje
+                        ? 'Consultando...'
+                        : 'Ver mi viaje activo'}
+                </button>
+            )}
+
             {estadoEnvio === 'procesando' && (
                 <p role="status">Procesando tu solicitud…</p>
             )}
@@ -200,9 +252,9 @@ export function ConfirmacionViaje({
                         type="button"
                         className="btn-corregir"
                         disabled={bloqueado}
-                        onClick={() =>
+                        onClick={() => {
                             setRecarga(valor => valor + 1)
-                        }
+                        }}
                     >
                         Reintentar cotización
                     </button>
@@ -224,6 +276,7 @@ export function ConfirmacionViaje({
                     className="btn-submit"
                     onClick={confirmar}
                     disabled={
+                        consultandoViaje ||
                         estadoEnvio === 'procesando' ||
                         (!tarifaActual &&
                             estadoEnvio !== 'incierto')
@@ -240,8 +293,9 @@ export function ConfirmacionViaje({
 
             {bloqueado && (
                 <small>
-                    Espera a resolver este envío antes de
-                    cambiar los puntos.
+                    {consultandoViaje
+                        ? 'Espera mientras consultamos tu viaje activo.'
+                        : 'Espera a resolver este envío antes de cambiar los puntos.'}
                 </small>
             )}
         </main>
