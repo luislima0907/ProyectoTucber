@@ -141,6 +141,7 @@ export default class SolicitudRepository{
             createdAt: row.createat,
             expiresAt: row.expiresat,
             llegadaAt: row.llegadaat,
+            iniciadoAt: row.iniciadoat,
             driverId: row.idconductor,
             offers: ofertas
         }

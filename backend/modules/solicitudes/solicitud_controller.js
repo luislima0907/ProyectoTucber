@@ -11,6 +11,9 @@ const createRequest = z.object({
     reference: z.string().trim().max(250).optional(),
     idempotencyKey: z.string().trim().min(1).max(100)
 })
+const validatePinSchema = z.object({
+    pin: z.string().regex(/^\d{4}$/)
+})
 
 export default class SolicitudController{
     constructor(router, service){
@@ -21,6 +24,7 @@ export default class SolicitudController{
         router.get('/solicitudes/:id/pin', (req, res) => this.getPin(req, res))
         router.post('/solicitudes/:id/llegada', (req, res) => this.marcarLlegada(req, res))
         router.post('/drivers/requests/:id/arrive', (req, res) => this.marcarLlegada(req, res))
+        router.post('/drivers/requests/:id/validate-pin', (req, res) => this.validarPin(req, res))
     }
 
     resolveClient(req, res){
@@ -166,6 +170,41 @@ export default class SolicitudController{
             }
             console.error('Error al obtener PIN:', error)
             return res.status(500).json({ message: 'No se pudo obtener el PIN.' })
+        }
+    }
+
+    async validarPin(req, res){
+        const idConductor = this.resolveDriver(req, res)
+        if (idConductor === null) return
+
+        const idSolicitud = Number(req.params.id)
+        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
+            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
+        }
+
+        const result = validatePinSchema.safeParse(req.body)
+        if (!result.success){
+            return res.status(400).json({ message: 'El PIN debe tener 4 dígitos.' })
+        }
+
+        try{
+            const solicitud = await this.service.validarPin(idConductor, idSolicitud, result.data.pin)
+            return res.status(200).json({ solicitud })
+        }catch(error){
+            if (error.code === 'NOT_FOUND'){
+                return res.status(404).json({ message: error.message })
+            }
+            if (error.code === 'FORBIDDEN'){
+                return res.status(403).json({ message: error.message })
+            }
+            if (error.code === 'CONFLICT'){
+                return res.status(409).json({ message: error.message })
+            }
+            if (error.code === 'BAD_REQUEST'){
+                return res.status(400).json({ message: error.message })
+            }
+            console.error('Error al validar PIN:', error)
+            return res.status(500).json({ message: 'No se pudo validar el PIN.' })
         }
     }
 }
