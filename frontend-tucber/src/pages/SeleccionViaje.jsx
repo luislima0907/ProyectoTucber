@@ -16,7 +16,7 @@ function coordenadasValidas(punto) {
     )
 }
 
-export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
+export function SeleccionViaje({ onContinuar, onCambioSeleccion,  onBloqueoCambio }) {
     const [origen, setOrigen] = useState(null)
     const [destino, setDestino] = useState(null)
     const [descripcionOrigen, setDescripcionOrigen] = useState('')
@@ -162,6 +162,9 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
     function continuar() {
         if (!puedeContinuar) return
 
+        solicitudUbicacion.current += 1
+        setLocalizando(false)
+
         const seleccion = {
             origen: {
                 ...origen,
@@ -184,6 +187,7 @@ export function SeleccionViaje({ onContinuar, onCambioSeleccion }) {
             <ConfirmacionViaje
                 seleccion={resumen}
                 onVolver={() => setResumen(null)}
+                onBloqueoCambio={onBloqueoCambio}
             />
         )
     }
