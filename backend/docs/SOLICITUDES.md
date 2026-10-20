@@ -301,49 +301,10 @@ La creación utiliza una transacción PostgreSQL y el bloqueo:
 SELECT pg_advisory_xact_lock($1)
 ```
 
-El valor utilizado es el identificador del cliente. Mientras una transacción
-está creando o validando una solicitud para ese cliente, otra transacción
-simultánea espera antes de revisar el estado.
-
-Dentro del bloqueo se realizan, en este orden:
-
-1. búsqueda del mismo intento;
-2. búsqueda de solicitudes activas;
-3. inserción de la nueva solicitud.
-
-Una solicitud se considera activa si su estado es:
-
-- `buscando`, siempre que todavía no haya vencido;
-- `aceptada`;
-- `en_curso`.
-
-Las solicitudes `completada`, `cancelada` y `vencida` no bloquean la creación
-de una nueva solicitud.
-
-El índice único de `(idUsuario, idIntento)` funciona además como protección de
-integridad en la base de datos, incluso si otro código intenta insertar
-directamente.
-
-## Vencimiento
-
-Toda solicitud nueva se guarda con:
-
-```text
-expiresAt = fecha actual + 90 segundos
-```
-
-El tiempo se calcula en PostgreSQL, no en el navegador. Esto evita depender del
-reloj del dispositivo del cliente.
-
-La consulta de solicitud actual solo devuelve una solicitud en estado
-`buscando` si `expiresAt > now()`. Por lo tanto, una solicitud de búsqueda
-vencida deja de aparecer como actual aunque todavía conserve su registro en la
-base de datos.
-
-La implementación actual no ejecuta un proceso de limpieza ni cambia
-automáticamente el estado a `vencida`. El vencimiento se aplica en las
-consultas mediante la fecha. Un proceso posterior puede actualizar el estado
-histórico a `vencida` si el producto lo requiere.
+donde `$1` es el identificador del cliente. Esto serializa las creaciones
+concurrentes del mismo cliente sin bloquear a otros usuarios. Dentro de la
+transacción se vuelve a consultar la idempotencia y la existencia de solicitud
+activa, por lo que la operación es segura bajo concurrencia real.
 
 ## Endpoint para consultar la solicitud actual
 
@@ -352,100 +313,11 @@ GET /solicitudes/actual
 Authorization: Bearer <token>
 ```
 
-El cliente no envía un `idUsuario` ni un `idSolicitud`. El backend obtiene el
-cliente desde la sesión y filtra la consulta por `idUsuario`.
+Devuelve la solicitud más reciente del cliente que esté en estado `buscando`,
+`aceptada`, `en_recogida` o `en_curso`. Las solicitudes `buscando` deben
+tener `expiresAt > now()` para aparecer.
 
-### Respuesta cuando existe una solicitud actual
-
-Código HTTP: `200 OK`.
-
-```json
-{
-  "solicitud": {
-    "id": 15,
-    "origin": {
-      "latitude": 14.6349,
-      "longitude": -89.9886
-    },
-    "destination": {
-      "latitude": 14.6412,
-      "longitude": -89.9765
-    },
-    "reference": "Frente al parque central",
-    "distanceMeters": 1850,
-    "amount": 3,
-    "currency": "GTQ",
-    "status": "buscando",
-    "createdAt": "2026-10-18T05:30:00.000Z",
-    "expiresAt": "2026-10-18T05:31:30.000Z",
-    "offers": [
-      {
-        "id": 4,
-        "driverId": 27,
-        "amount": 3,
-        "status": "vigente",
-        "createdAt": "2026-10-18T05:30:20.000Z",
-        "expiresAt": "2026-10-18T05:31:10.000Z"
-      }
-    ]
-  }
-}
-```
-
-### Respuesta cuando no existe una solicitud actual
-
-Código HTTP: `200 OK`.
-
-```json
-{
-  "solicitud": null
-}
-```
-
-La consulta devuelve como máximo la solicitud actual más reciente del cliente.
-Nunca devuelve solicitudes pertenecientes a otros clientes.
-
-Las ofertas incluidas cumplen simultáneamente:
-
-- pertenecen a la solicitud del cliente autenticado;
-- tienen estado `vigente`;
-- su vencimiento todavía no ha pasado.
-
-## Integración con la cotización existente
-
-La creación reutiliza `TarifaService`, el mismo servicio utilizado por
-`POST /tarifas/cotizacion`.
-
-El servidor utiliza:
-
-- `GOOGLE_MAPS_API_KEY`;
-- geocodificación inversa para validar la zona;
-- Google Routes API para obtener la distancia;
-- `config/tarifa.js` para seleccionar el importe.
-
-Los puntos se validan nuevamente durante la creación. El frontend puede haber
-consultado una cotización previamente, pero la solicitud no confía en una
-tarifa o distancia enviada desde el navegador.
-
-Esto evita que un cliente altere:
-
-- la tarifa;
-- la distancia;
-- la zona;
-- el estado inicial;
-- la identidad del propietario.
-
-## Inicialización de la base de datos
-
-La migración se registra en `infrastructure/db/migrations/setup.js` y se
-ejecuta durante el arranque del servidor, junto con las migraciones existentes.
-
-La migración utiliza `CREATE TABLE IF NOT EXISTS` y
-`CREATE INDEX IF NOT EXISTS`, por lo que puede ejecutarse en instalaciones
-existentes sin eliminar las tablas actuales.
-
-La estructura creada no utiliza la tabla genérica `users`; utiliza la tabla
-existente `usuarios`, que es la fuente de identidad del sistema.
+Código HTTP: `200 OK`. Si no hay solicitud actual, se devuelve `null`.
 
 ## Flujo esperado del frontend
 
@@ -480,3 +352,101 @@ pero todavía quedan fuera de este cambio:
 
 Esas funcionalidades deben reutilizar las mismas reglas de propiedad,
 validación de estados y protección de concurrencia.
+
+## Marcar llegada del conductor (en_recogida) y PIN
+
+Tras aceptar una oferta, la solicitud pasa a `aceptada` con `idConductor`
+asignado. El conductor puede marcar que llegó al punto de recogida.
+
+### Endpoints para marcar llegada
+
+```http
+POST /solicitudes/:id/llegada
+POST /drivers/requests/:id/arrive
+Authorization: Bearer <token>
+```
+
+Requiere rol `conductor`. Solo el conductor asignado a la solicitud puede
+marcar la llegada. La confirmación es manual, sin coordenadas GPS.
+
+Reglas:
+
+- Solo permite la transición desde `aceptada` hacia `en_recogida`.
+- Al marcar por primera vez se registra `llegadaAt` con la hora del servidor.
+- Si aún no existe, se genera un PIN de 6 dígitos y se guarda en la solicitud.
+- Si ya está en `en_recogida` o ya existe `llegadaAt`, la operación es
+  idempotente: no se modifica la hora ni se regenera el PIN. Se devuelve el
+  estado actual.
+- Si la solicitud está `cancelada`, `completada` o `vencida`, se rechaza con
+  `409`.
+- Si ya está `en_curso`, se devuelve el estado actual sin modificarlo.
+- Se utiliza transacción y bloqueo por fila (`SELECT ... FOR UPDATE`) para
+  evitar carreras entre cancelación y confirmaciones simultáneas.
+- El PIN **nunca** se devuelve en la respuesta al conductor.
+
+Respuesta exitosa (`200 OK`):
+
+```json
+{
+  "solicitud": {
+    "id": 123,
+    "origin": { "latitude": 14.6349, "longitude": -89.9886 },
+    "destination": { "latitude": 14.6412, "longitude": -89.9765 },
+    "reference": "Frente al parque central",
+    "distanceMeters": 1850,
+    "amount": 15,
+    "currency": "GTQ",
+    "status": "en_recogida",
+    "createdAt": "2026-10-20T01:20:00.000Z",
+    "expiresAt": "2026-10-20T01:21:30.000Z",
+    "llegadaAt": "2026-10-20T01:23:45.000Z",
+    "driverId": 7,
+    "offers": []
+  }
+}
+```
+
+Códigos de error: `400` (id inválido), `401` (sin sesión válida), `403` (no es
+el conductor asignado o rol incorrecto), `404` (solicitud no existe), `409`
+(viaje cancelado, completado, vencido o estado no transicionable), `500`
+(error inesperado).
+
+### Endpoints para consultar el PIN
+
+```http
+GET /solicitudes/actual/pin
+GET /solicitudes/:id/pin
+Authorization: Bearer <token>
+```
+
+Requiere rol `cliente` y que el cliente sea propietario de la solicitud.
+
+Reglas:
+
+- Solo se habilita si `llegadaAt` existe y el estado es `en_recogida` o
+  `en_curso`.
+- Si el conductor aún no ha marcado la llegada, se rechaza con `409`.
+- Si la solicitud está `cancelada`, `completada` o `vencida`, se rechaza con
+  `409`.
+- El PIN se guarda en texto plano (MVP) y se devuelve tal como se generó.
+- El conductor nunca recibe el PIN.
+
+Respuesta exitosa (`200 OK`):
+
+```json
+{
+  "pin": "123456"
+}
+```
+
+Códigos de error: `400` (id inválido), `401` (sin sesión válida), `403` (no es
+propietario), `404` (no hay solicitud activa o no existe), `409` (aún no hay
+llegada o viaje no disponible), `500` (error inesperado).
+
+### Actualización de estados y consultas
+
+- `GET /solicitudes/actual` considera `en_recogida` como solicitud activa para
+  el cliente.
+- Las consultas del conductor para viaje actual consideran `en_recogida`.
+- La migración `006_llegada_y_pin_migration.js` añade las columnas y amplía el
+  `CHECK` de estados sin eliminar datos existentes.

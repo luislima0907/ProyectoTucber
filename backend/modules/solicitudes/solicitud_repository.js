@@ -34,7 +34,7 @@ export default class SolicitudRepository{
                 `SELECT 1
                  FROM solicitudes
                  WHERE idUsuario = $1
-                   AND estado IN ('buscando', 'aceptada', 'en_curso')
+                   AND estado IN ('buscando', 'aceptada', 'en_recogida', 'en_curso')
                    AND (estado <> 'buscando' OR expiresAt > now())
                  LIMIT 1`,
                 [data.idUsuario]
@@ -74,35 +74,58 @@ export default class SolicitudRepository{
         }
     }
 
-    async findCurrentWithOffers(idUsuario){
+    findByIdForUpdate(idSolicitud, tx){
+        const db = tx ?? this.db
+        return db.query(
+            `SELECT *
+             FROM solicitudes
+             WHERE idSolicitud = $1
+             FOR UPDATE`,
+            [idSolicitud]
+        ).then(r => r.rows[0] || null)
+    }
+
+    async markArrived(idSolicitud, idConductor, tx){
+        const db = tx ?? this.db
+        const result = await db.query(
+            `UPDATE solicitudes
+                SET estado = 'en_recogida',
+                    llegadaAt = COALESCE(llegadaAt, now()),
+                    pin = COALESCE(pin, LPAD(floor(random()*1000000)::text, 6, '0'))
+              WHERE idSolicitud = $1
+                AND idConductor = $2
+                AND estado = 'aceptada'
+            RETURNING *`,
+            [idSolicitud, idConductor]
+        )
+        return result.rows[0] ? this.toSolicitud(result.rows[0], []) : null
+    }
+
+    async findCurrentForClient(idUsuario){
         const result = await this.db.query(
-            `SELECT
-                s.*,
-                COALESCE(
-                    jsonb_agg(
-                        jsonb_build_object(
-                            'id', o.idOferta,
-                            'driverId', o.idConductor,
-                            'amount', o.tarifa,
-                            'status', o.estado,
-                            'createdAt', o.createAt,
-                            'expiresAt', o.expiresAt
-                        ) ORDER BY o.createAt
-                    ) FILTER (WHERE o.idOferta IS NOT NULL AND o.estado = 'vigente' AND o.expiresAt > now()),
-                    '[]'::jsonb
-                ) AS ofertas
-             FROM solicitudes s
-             LEFT JOIN ofertas o ON o.idSolicitud = s.idSolicitud
-             WHERE s.idUsuario = $1
-               AND s.estado IN ('buscando', 'aceptada', 'en_curso')
-               AND (s.estado <> 'buscando' OR s.expiresAt > now())
-             GROUP BY s.idSolicitud
-             ORDER BY s.createAt DESC
+            `SELECT *
+             FROM solicitudes
+             WHERE idUsuario = $1
+               AND estado IN ('buscando', 'aceptada', 'en_recogida', 'en_curso')
+               AND (estado <> 'buscando' OR expiresAt > now())
+             ORDER BY createAt DESC
              LIMIT 1`,
             [idUsuario]
         )
-        const row = result.rows[0]
-        return row ? this.toSolicitud(row, row.ofertas) : null
+        return result.rows[0] || null
+    }
+
+    async findCurrentForDriver(idConductor){
+        const result = await this.db.query(
+            `SELECT *
+             FROM solicitudes
+             WHERE idConductor = $1
+               AND estado IN ('aceptada', 'en_recogida', 'en_curso')
+             ORDER BY createAt DESC
+             LIMIT 1`,
+            [idConductor]
+        )
+        return result.rows[0] || null
     }
 
     toSolicitud(row, ofertas){
@@ -117,6 +140,8 @@ export default class SolicitudRepository{
             status: row.estado,
             createdAt: row.createat,
             expiresAt: row.expiresat,
+            llegadaAt: row.llegadaat,
+            driverId: row.idconductor,
             offers: ofertas
         }
     }
