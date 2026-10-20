@@ -1,5 +1,21 @@
 export async function runSolicitudes(db){
     await db.query(`
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                AND table_name = 'solicitudes'
+                AND column_name = 'idcliente'
+            ) THEN
+                DROP TABLE IF EXISTS ofertas CASCADE;
+                DROP TABLE IF EXISTS solicitudes CASCADE;
+            END IF;
+        END $$;
+    `)
+
+    await db.query(`
         CREATE TABLE IF NOT EXISTS solicitudes (
             idSolicitud SERIAL PRIMARY KEY,
             idUsuario INTEGER NOT NULL REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
@@ -21,14 +37,16 @@ export async function runSolicitudes(db){
 
         CREATE INDEX IF NOT EXISTS solicitudes_usuario_estado_idx
             ON solicitudes(idUsuario, estado);
+    `)
 
+    await db.query(`
         CREATE TABLE IF NOT EXISTS ofertas (
             idOferta SERIAL PRIMARY KEY,
             idSolicitud INTEGER NOT NULL REFERENCES solicitudes(idSolicitud) ON DELETE CASCADE,
             idConductor INTEGER NOT NULL REFERENCES usuarios(idUsuario) ON DELETE CASCADE,
             tarifa NUMERIC(10, 2) NOT NULL CHECK (tarifa >= 0),
             estado TEXT NOT NULL DEFAULT 'vigente'
-                CHECK (estado IN ('vigente', 'aceptada', 'rechazada', 'expirada')),
+                CHECK (estado IN ('vigente', 'aceptada', 'rechazada', 'expirada', 'retirada')),
             createAt TIMESTAMPTZ NOT NULL DEFAULT now(),
             expiresAt TIMESTAMPTZ NOT NULL
         );

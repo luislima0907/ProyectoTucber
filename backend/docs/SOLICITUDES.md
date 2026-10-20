@@ -257,6 +257,7 @@ frontend, aunque los nombres internos de la base de datos utilicen
 | `401` | No existe una identidad válida en la sesión. |
 | `403` | El usuario autenticado no tiene rol `cliente`. |
 | `409` | El cliente ya tiene una solicitud o viaje activo. |
+| `500` | Error inesperado del servidor. |
 | `502` | Fallo del servicio externo de cotización o error no recuperable al calcular la tarifa. |
 
 Ejemplo de conflicto por solicitud activa:

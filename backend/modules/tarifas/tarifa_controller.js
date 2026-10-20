@@ -29,8 +29,13 @@ export default class TarifaController {
             return res.status(200).json(quote)
         } catch (error) {
             console.error('Error al calcular tarifa:', error)
-            const status = error.message.includes('fuera de la zona piloto') ? 400 : 502
-            return res.status(status).json({ message: error.message })
+            if (error.code === 'ZONE') {
+                return res.status(400).json({ message: error.message })
+            }
+            if (error.code === 'UPSTREAM') {
+                return res.status(502).json({ message: error.message })
+            }
+            return res.status(500).json({ message: 'Error inesperado al calcular la tarifa.' })
         }
     }
 }

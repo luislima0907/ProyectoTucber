@@ -11,7 +11,9 @@ export default class TarifaService {
 
     async calculateQuote(origin, destination) {
         if (!this.apiKey) {
-            throw new Error('El backend no tiene configurada la clave de Google Maps')
+            const error = new Error('El backend no tiene configurada la clave de Google Maps')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const [originAddress, destinationAddress] = await Promise.all([
@@ -40,12 +42,16 @@ export default class TarifaService {
         })
         const response = await this.fetch(`${GOOGLE_GEOCODING_URL}?${params}`)
         if (!response.ok) {
-            throw new Error('No se pudo validar la zona del punto')
+            const error = new Error('No se pudo validar la zona del punto')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const data = await response.json()
         if (data.status !== 'OK' || !data.results?.length) {
-            throw new Error('No se pudo ubicar uno de los puntos en el mapa')
+            const error = new Error('No se pudo ubicar uno de los puntos en el mapa')
+            error.code = 'UPSTREAM'
+            throw error
         }
         return data.results[0]
     }
@@ -60,7 +66,9 @@ export default class TarifaService {
             .includes(zone.department.toLowerCase())
 
         if (!dentroDelDepartamento || country !== zone.countryCode) {
-            throw new Error(`El punto de ${pointName} está fuera de la zona piloto`)
+            const error = new Error(`El punto de ${pointName} está fuera de la zona piloto`)
+            error.code = 'ZONE'
+            throw error
         }
     }
 
@@ -99,13 +107,17 @@ export default class TarifaService {
         })
 
         if (!response.ok) {
-            throw new Error('Google Maps no pudo calcular la ruta')
+            const error = new Error('Google Maps no pudo calcular la ruta')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         const data = await response.json()
         const route = data.routes?.[0]
         if (!route?.distanceMeters || !route.duration) {
-            throw new Error('No existe una ruta disponible entre los puntos')
+            const error = new Error('No existe una ruta disponible entre los puntos')
+            error.code = 'UPSTREAM'
+            throw error
         }
 
         return {
