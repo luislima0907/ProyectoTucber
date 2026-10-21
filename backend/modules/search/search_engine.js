@@ -6,6 +6,7 @@ import HttpError from '../../common/http_error.js'
 const locationSchema = z.object({
     latitude: z.number().min(-90).max(90),
     longitude: z.number().min(-180).max(180),
+    accuracy: z.number().nonnegative().optional(),
 })
 
 export default class SearchEngine {
@@ -14,6 +15,7 @@ export default class SearchEngine {
         this.requestService = requestService
         this.connections = new Map()
         this.locations = new Map()
+        this.tripLocations = new Map()
         this.server = new WebSocketServer({ noServer: true, maxPayload: 8192 })
         server.on('upgrade', (request, socket, head) => {
             try {
@@ -66,6 +68,7 @@ export default class SearchEngine {
         const user = socket.user
         if (message.type === 'sync') return this.restore(socket)
         if (user.rol !== 'conductor') throw new HttpError(403, 'Acción exclusiva de conductores.')
+        if (message.type === 'trip-location') return this.trackTrip(socket, message)
         if (message.type === 'location') {
             const result = locationSchema.safeParse(message.location)
             if (!result.success) throw new HttpError(400, 'Ubicación inválida.')
@@ -91,7 +94,30 @@ export default class SearchEngine {
                 : await repository.findCurrentForDriver(user.sub)
         const detail = trip ? await repository.findById(trip.idsolicitud) : null
         this.send(socket, 'trip', detail ? repository.toSolicitud(detail, []) : null)
+        if (trip) this.send(socket, 'trip-location', this.tripLocations.get(trip.idsolicitud) || null)
         if (user.rol === 'conductor') await this.broadcastPending()
+    }
+
+    async trackTrip(socket, message) {
+        const result = locationSchema.safeParse(message.location)
+        if (!Number.isInteger(message.tripId) || !result.success) {
+            throw new HttpError(400, 'Ubicación del viaje inválida.')
+        }
+        const now = Date.now()
+        if (now - (socket.lastLocationAt || 0) < 5000) return
+        socket.lastLocationAt = now
+        const trip = await this.requestService.repository.findCurrentForDriver(socket.user.sub)
+        if (!trip || trip.idsolicitud !== message.tripId) {
+            throw new HttpError(403, 'Solo puedes compartir ubicación en tu viaje activo.')
+        }
+        const location = { ...result.data, tripId: trip.idsolicitud, updatedAt: now }
+        this.locations.set(socket.user.sub, location)
+        this.tripLocations.set(trip.idsolicitud, location)
+        for (const [connection, user] of this.connections) {
+            if (user.sub === trip.idusuario || user.sub === trip.idconductor) {
+                this.send(connection, 'trip-location', location)
+            }
+        }
     }
 
     async broadcastPending() {
@@ -149,6 +175,9 @@ export default class SearchEngine {
         const repository = this.requestService.repository
         const detail = await repository.findById(row.idsolicitud)
         const trip = repository.toSolicitud(detail || row, [])
+        if (!['aceptada', 'en_recogida', 'en_curso'].includes(trip.status)) {
+            this.tripLocations.delete(trip.id)
+        }
         for (const [socket, user] of this.connections) {
             if (user.sub === row.idusuario || user.sub === row.idconductor)
                 this.send(socket, 'trip', trip)
