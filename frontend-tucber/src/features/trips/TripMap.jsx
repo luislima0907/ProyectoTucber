@@ -7,7 +7,9 @@ export function TripMap({ origin, destination, route, onSelect }) {
     const select = useRef(onSelect)
     const [ready, setReady] = useState(false)
     const [error, setError] = useState('')
-    useEffect(() => { select.current = onSelect }, [onSelect])
+    useEffect(() => {
+        select.current = onSelect
+    }, [onSelect])
 
     useEffect(() => {
         let active = true
@@ -17,15 +19,20 @@ export function TripMap({ origin, destination, route, onSelect }) {
                 const { Map } = await loadMapsLibrary('maps')
                 if (!active) return
                 map.current = new Map(container.current, {
-                    center: { lat: 14.6347, lng: -89.9889 }, zoom: 14,
-                    disableDefaultUI: true, zoomControl: true, clickableIcons: false,
-                    styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }]
+                    center: { lat: 14.6347, lng: -89.9889 },
+                    zoom: 14,
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    clickableIcons: false,
+                    styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
                 })
-                listener = map.current.addListener('click', event => {
-                    if (event.latLng) select.current?.({
-                        latitude: event.latLng.lat(), longitude: event.latLng.lng(),
-                        description: `${event.latLng.lat().toFixed(4)}, ${event.latLng.lng().toFixed(4)}`
-                    })
+                listener = map.current.addListener('click', (event) => {
+                    if (event.latLng)
+                        select.current?.({
+                            latitude: event.latLng.lat(),
+                            longitude: event.latLng.lng(),
+                            description: `${event.latLng.lat().toFixed(4)}, ${event.latLng.lng().toFixed(4)}`,
+                        })
                 })
                 setReady(true)
             } catch (failure) {
@@ -33,7 +40,10 @@ export function TripMap({ origin, destination, route, onSelect }) {
             }
         }
         initialize()
-        return () => { active = false; listener?.remove() }
+        return () => {
+            active = false
+            listener?.remove()
+        }
     }, [])
 
     useEffect(() => {
@@ -50,27 +60,47 @@ export function TripMap({ origin, destination, route, onSelect }) {
                 if (!point) continue
                 const position = { lat: point.latitude, lng: point.longitude }
                 bounds.extend(position)
-                markers.push(new Marker({ map: map.current, position, label: index === 0 ? 'A' : 'B' }))
+                markers.push(
+                    new Marker({ map: map.current, position, label: index === 0 ? 'A' : 'B' }),
+                )
             }
             if (origin && destination) map.current.fitBounds(bounds, 64)
             else if (origin || destination) map.current.panTo(bounds.getCenter())
             if (route) {
                 const { encoding } = await loadMapsLibrary('geometry')
                 const { Polyline } = await loadMapsLibrary('maps')
-                if (active) polyline = new Polyline({
-                    map: map.current, path: encoding.decodePath(route), strokeColor: '#087cbe', strokeWeight: 5
-                })
+                if (active)
+                    polyline = new Polyline({
+                        map: map.current,
+                        path: encoding.decodePath(route),
+                        strokeColor: '#087cbe',
+                        strokeWeight: 5,
+                    })
             }
         }
-        draw().catch(() => setError('No se pudo mostrar el recorrido. Las direcciones siguen disponibles.'))
-        return () => { active = false; markers.forEach(marker => marker.setMap(null)); polyline?.setMap(null) }
+        draw().catch(() =>
+            setError('No se pudo mostrar el recorrido. Las direcciones siguen disponibles.'),
+        )
+        return () => {
+            active = false
+            markers.forEach((marker) => marker.setMap(null))
+            polyline?.setMap(null)
+        }
     }, [ready, origin, destination, route])
 
     return (
         <div className="map-surface">
             <div className="trip-map" ref={container} aria-label="Mapa de Jalapa" />
-            {!ready && <div className="map-status" role="status">{error || 'Cargando mapa de Jalapa…'}</div>}
-            {ready && error && <p className="map-warning" role="status">{error}</p>}
+            {!ready && (
+                <div className="map-status" role="status">
+                    {error || 'Cargando mapa de Jalapa…'}
+                </div>
+            )}
+            {ready && error && (
+                <p className="map-warning" role="status">
+                    {error}
+                </p>
+            )}
             <span className="map-location">Jalapa, Guatemala</span>
         </div>
     )

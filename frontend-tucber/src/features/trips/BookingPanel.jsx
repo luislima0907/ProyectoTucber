@@ -32,7 +32,12 @@ export function BookingPanel({ onCreated }) {
             if (!quote) setQuote(await tripService.quote(origin, destination))
             else {
                 attempt.current ||= crypto.randomUUID()
-                const trip = await tripService.create({ origin, destination, reference, idempotencyKey: attempt.current })
+                const trip = await tripService.create({
+                    origin,
+                    destination,
+                    reference,
+                    idempotencyKey: attempt.current,
+                })
                 onCreated(trip)
             }
         } catch (failure) {
@@ -44,9 +49,16 @@ export function BookingPanel({ onCreated }) {
     }
 
     function locate() {
-        navigator.geolocation?.getCurrentPosition(position => {
-            selectPoint('origin', { latitude: position.coords.latitude, longitude: position.coords.longitude, description: 'Mi ubicación' })
-        }, () => setError('Selecciona tu recogida en el mapa o búscala por nombre.'))
+        navigator.geolocation?.getCurrentPosition(
+            (position) => {
+                selectPoint('origin', {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    description: 'Mi ubicación',
+                })
+            },
+            () => setError('Selecciona tu recogida en el mapa o búscala por nombre.'),
+        )
     }
 
     return (
@@ -55,26 +67,78 @@ export function BookingPanel({ onCreated }) {
                 <h1>¿A dónde vamos?</h1>
                 <p className="muted">Un viaje por Jalapa empieza aquí.</p>
                 <form onSubmit={submit}>
-                    <PlaceField label="Punto de recogida" value={origin} onSelect={value => selectPoint('origin', value)} />
-                    <button className="text-button" type="button" onClick={locate}>Usar mi ubicación</button>
-                    <PlaceField label="Destino" value={destination} onSelect={value => selectPoint('destination', value)} />
-                    <label className="form-group">Referencia de recogida
-                        <input value={reference} onChange={event => setReference(event.target.value)} placeholder="Frente a la entrada, por ejemplo" maxLength={250} />
+                    <PlaceField
+                        label="Punto de recogida"
+                        value={origin}
+                        onSelect={(value) => selectPoint('origin', value)}
+                    />
+                    <button className="text-button" type="button" onClick={locate}>
+                        Usar mi ubicación
+                    </button>
+                    <PlaceField
+                        label="Destino"
+                        value={destination}
+                        onSelect={(value) => selectPoint('destination', value)}
+                    />
+                    <label className="form-group">
+                        Referencia de recogida
+                        <input
+                            value={reference}
+                            onChange={(event) => setReference(event.target.value)}
+                            placeholder="Frente a la entrada, por ejemplo"
+                            maxLength={250}
+                        />
                     </label>
                     <fieldset className="point-picker">
                         <legend>También puedes elegir en el mapa</legend>
-                        <label><input type="radio" name="point" checked={point === 'origin'} onChange={() => setPoint('origin')} /> Recogida</label>
-                        <label><input type="radio" name="point" checked={point === 'destination'} onChange={() => setPoint('destination')} /> Destino</label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="point"
+                                checked={point === 'origin'}
+                                onChange={() => setPoint('origin')}
+                            />{' '}
+                            Recogida
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="point"
+                                checked={point === 'destination'}
+                                onChange={() => setPoint('destination')}
+                            />{' '}
+                            Destino
+                        </label>
                     </fieldset>
-                    {quote && <div className="quote-summary"><div><span>Tu tarifa en efectivo</span><strong>{formatMoney(quote.amount)}</strong></div><p>{(quote.distanceMeters / 1000).toFixed(1)} km de recorrido · Precio acordado</p></div>}
-                    {error && <p className="error-msg" role="alert">{error}</p>}
+                    {quote && (
+                        <div className="quote-summary">
+                            <div>
+                                <span>Tu tarifa en efectivo</span>
+                                <strong>{formatMoney(quote.amount)}</strong>
+                            </div>
+                            <p>
+                                {(quote.distanceMeters / 1000).toFixed(1)} km de recorrido · Precio
+                                acordado
+                            </p>
+                        </div>
+                    )}
+                    {error && (
+                        <p className="error-msg" role="alert">
+                            {error}
+                        </p>
+                    )}
                     <button className="primary-button" disabled={!origin || !destination || busy}>
                         {busy ? 'Procesando…' : quote ? 'Buscar conductor' : 'Ver tarifa del viaje'}
                     </button>
                     <p className="form-note">El pago se realiza en efectivo al finalizar.</p>
                 </form>
             </section>
-            <TripMap origin={origin} destination={destination} route={quote?.polyline} onSelect={value => selectPoint(point, value)} />
+            <TripMap
+                origin={origin}
+                destination={destination}
+                route={quote?.polyline}
+                onSelect={(value) => selectPoint(point, value)}
+            />
         </div>
     )
 }
