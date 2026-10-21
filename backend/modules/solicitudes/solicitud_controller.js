@@ -1,211 +1,65 @@
 import { z } from 'zod'
+import HttpError from '../../common/http_error.js'
 
-const coordinate = z.number().finite()
-const point = z.object({
-    latitude: coordinate.min(-90).max(90),
-    longitude: coordinate.min(-180).max(180)
-})
-const createRequest = z.object({
+const point = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) })
+const requestSchema = z.object({
     origin: point,
     destination: point,
-    reference: z.string().trim().max(250).optional(),
-    idempotencyKey: z.string().trim().min(1).max(100)
-})
-const validatePinSchema = z.object({
-    pin: z.string().regex(/^\d{4}$/)
+    reference: z.string().max(250).optional(),
+    idempotencyKey: z.string().min(1).max(100)
 })
 
-export default class SolicitudController{
-    constructor(router, service){
+export default class SolicitudController {
+    constructor(router, service) {
         this.service = service
         router.post('/solicitudes', (req, res) => this.create(req, res))
         router.get('/solicitudes/actual', (req, res) => this.getCurrent(req, res))
-        router.get('/solicitudes/actual/pin', (req, res) => this.getPinCurrent(req, res))
         router.get('/solicitudes/:id/pin', (req, res) => this.getPin(req, res))
-        router.post('/solicitudes/:id/llegada', (req, res) => this.marcarLlegada(req, res))
-        router.post('/drivers/requests/:id/arrive', (req, res) => this.marcarLlegada(req, res))
-        router.post('/drivers/requests/:id/validate-pin', (req, res) => this.validarPin(req, res))
+        router.post('/solicitudes/:id/llegada', (req, res) => this.markArrived(req, res))
+        router.post('/solicitudes/:id/iniciar', (req, res) => this.start(req, res))
     }
 
-    resolveClient(req, res){
-        const idUsuario = Number(req.user?.sub)
-        if (!Number.isInteger(idUsuario) || idUsuario <= 0){
-            res.status(401).json({ message: 'Token sin identidad de usuario. Inicia sesión de nuevo.' })
-            return null
-        }
-        if (req.user?.rol !== 'cliente'){
-            res.status(403).json({ message: 'Solo los clientes pueden crear solicitudes.' })
-            return null
-        }
-        return idUsuario
+    requireRole(req, role) {
+        if (req.user.rol !== role) throw new HttpError(403, 'Tu cuenta no permite esta acción.')
     }
 
-    resolveDriver(req, res){
-        const idUsuario = Number(req.user?.sub)
-        if (!Number.isInteger(idUsuario) || idUsuario <= 0){
-            res.status(401).json({ message: 'Token sin identidad de usuario. Inicia sesión de nuevo.' })
-            return null
-        }
-        if (req.user?.rol !== 'conductor'){
-            res.status(403).json({ message: 'Solo los conductores pueden realizar esta acción.' })
-            return null
-        }
-        return idUsuario
+    async create(req, res) {
+        this.requireRole(req, 'cliente')
+        const result = requestSchema.safeParse(req.body)
+        if (!result.success) throw new HttpError(400, 'Selecciona origen y destino válidos.')
+        const solicitud = await this.service.create(req.user.sub, result.data)
+        await req.app.locals.searchEngine.broadcastPending()
+        res.status(201).json({ solicitud })
     }
 
-    async create(req, res){
-        const idUsuario = this.resolveClient(req, res)
-        if (idUsuario === null) return
-
-        const result = createRequest.safeParse(req.body)
-        if (!result.success){
-            return res.status(400).json({ message: 'Origen, destino e identificador de intento son obligatorios y válidos.' })
-        }
-
-        try{
-            const solicitud = await this.service.create(idUsuario, result.data)
-            await req.app.locals.searchEngine.broadcastPending()
-            return res.status(201).json({ solicitud })
-        }catch(error){
-            if (error.code === 'ACTIVE_REQUEST'){
-                return res.status(409).json({ message: error.message })
-            }
-            if (error.code === 'ZONE'){
-                return res.status(400).json({ message: error.message })
-            }
-            if (error.code === 'UPSTREAM'){
-                return res.status(502).json({ message: error.message })
-            }
-            console.error('Error al crear solicitud:', error)
-            return res.status(500).json({ message: 'No se pudo crear la solicitud.' })
-        }
+    async getCurrent(req, res) {
+        const repository = this.service.repository
+        const row = req.user.rol === 'cliente'
+            ? await repository.findCurrentForClient(req.user.sub)
+            : await repository.findCurrentForDriver(req.user.sub)
+        res.json({ solicitud: row ? repository.toSolicitud(row, []) : null })
     }
 
-    async getCurrent(req, res){
-        const idUsuario = this.resolveClient(req, res)
-        if (idUsuario === null) return
-
-        try{
-            const solicitud = await this.service.getCurrent(idUsuario)
-            return res.status(200).json({ solicitud })
-        }catch(error){
-            console.error('Error al consultar solicitud:', error)
-            return res.status(500).json({ message: 'No se pudo consultar la solicitud.' })
-        }
+    async getPin(req, res) {
+        this.requireRole(req, 'cliente')
+        res.json(await this.service.getPin(req.user.sub, Number(req.params.id)))
     }
 
-    async marcarLlegada(req, res){
-        const idConductor = this.resolveDriver(req, res)
-        if (idConductor === null) return
-
-        const idSolicitud = Number(req.params.id)
-        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
-            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
-        }
-
-        try{
-            const solicitud = await this.service.marcarLlegada(idConductor, idSolicitud)
-            return res.status(200).json({ solicitud })
-        }catch(error){
-            if (error.code === 'NOT_FOUND'){
-                return res.status(404).json({ message: error.message })
-            }
-            if (error.code === 'FORBIDDEN'){
-                return res.status(403).json({ message: error.message })
-            }
-            if (error.code === 'CONFLICT'){
-                return res.status(409).json({ message: error.message })
-            }
-            console.error('Error al marcar llegada:', error)
-            return res.status(500).json({ message: 'No se pudo marcar la llegada.' })
-        }
+    async markArrived(req, res) {
+        this.requireRole(req, 'conductor')
+        const row = await this.service.markArrived(req.user.sub, Number(req.params.id))
+        this.respond(req, res, row)
     }
 
-    async getPin(req, res){
-        const idUsuario = this.resolveClient(req, res)
-        if (idUsuario === null) return
-
-        const idSolicitud = Number(req.params.id)
-        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
-            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
-        }
-
-        try{
-            const result = await this.service.obtenerPin(idUsuario, idSolicitud)
-            return res.status(200).json(result)
-        }catch(error){
-            if (error.code === 'NOT_FOUND'){
-                return res.status(404).json({ message: error.message })
-            }
-            if (error.code === 'FORBIDDEN'){
-                return res.status(403).json({ message: error.message })
-            }
-            if (error.code === 'CONFLICT'){
-                return res.status(409).json({ message: error.message })
-            }
-            console.error('Error al obtener PIN:', error)
-            return res.status(500).json({ message: 'No se pudo obtener el PIN.' })
-        }
+    async start(req, res) {
+        this.requireRole(req, 'conductor')
+        if (!/^\d{4}$/.test(req.body.pin)) throw new HttpError(400, 'Introduce el PIN de 4 dígitos.')
+        const row = await this.service.validatePin(req.user.sub, Number(req.params.id), req.body.pin)
+        this.respond(req, res, row)
     }
 
-    async getPinCurrent(req, res){
-        const idUsuario = this.resolveClient(req, res)
-        if (idUsuario === null) return
-
-        try{
-            const row = await this.service.repository.findCurrentForClient(idUsuario)
-            if (!row){
-                return res.status(404).json({ message: 'No hay una solicitud activa.' })
-            }
-            const result = await this.service.obtenerPin(idUsuario, row.idsolicitud)
-            return res.status(200).json(result)
-        }catch(error){
-            if (error.code === 'NOT_FOUND'){
-                return res.status(404).json({ message: error.message })
-            }
-            if (error.code === 'FORBIDDEN'){
-                return res.status(403).json({ message: error.message })
-            }
-            if (error.code === 'CONFLICT'){
-                return res.status(409).json({ message: error.message })
-            }
-            console.error('Error al obtener PIN:', error)
-            return res.status(500).json({ message: 'No se pudo obtener el PIN.' })
-        }
-    }
-
-    async validarPin(req, res){
-        const idConductor = this.resolveDriver(req, res)
-        if (idConductor === null) return
-
-        const idSolicitud = Number(req.params.id)
-        if (!Number.isInteger(idSolicitud) || idSolicitud <= 0){
-            return res.status(400).json({ message: 'Identificador de solicitud inválido.' })
-        }
-
-        const result = validatePinSchema.safeParse(req.body)
-        if (!result.success){
-            return res.status(400).json({ message: 'El PIN debe tener 4 dígitos.' })
-        }
-
-        try{
-            const solicitud = await this.service.validarPin(idConductor, idSolicitud, result.data.pin)
-            return res.status(200).json({ solicitud })
-        }catch(error){
-            if (error.code === 'NOT_FOUND'){
-                return res.status(404).json({ message: error.message })
-            }
-            if (error.code === 'FORBIDDEN'){
-                return res.status(403).json({ message: error.message })
-            }
-            if (error.code === 'CONFLICT'){
-                return res.status(409).json({ message: error.message })
-            }
-            if (error.code === 'BAD_REQUEST'){
-                return res.status(400).json({ message: error.message })
-            }
-            console.error('Error al validar PIN:', error)
-            return res.status(500).json({ message: 'No se pudo validar el PIN.' })
-        }
+    respond(req, res, row) {
+        req.app.locals.searchEngine.publishTrip(row)
+        res.json({ solicitud: this.service.repository.toSolicitud(row, []) })
     }
 }

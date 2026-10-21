@@ -60,6 +60,7 @@ export default class SolicitudRepository{
             if (active.rowCount === 1){
                 const error = new Error('El cliente ya tiene un viaje activo')
                 error.code = 'ACTIVE_REQUEST'
+                error.status = 409
                 throw error
             }
 
@@ -112,20 +113,21 @@ export default class SolicitudRepository{
         ).then(r => r.rows[0] || null)
     }
 
-    async markArrived(idSolicitud, idConductor, tx){
-        const db = tx ?? this.db
-        const result = await db.query(
-            `UPDATE solicitudes
-                SET estado = 'en_recogida',
-                    llegadaAt = COALESCE(llegadaAt, now()),
-                    pin = COALESCE(pin, LPAD(floor(random()*10000)::text, 4, '0'))
-              WHERE idSolicitud = $1
-                AND idConductor = $2
-                AND estado = 'aceptada'
-            RETURNING *`,
-            [idSolicitud, idConductor]
-        )
-        return result.rows[0] ? this.toSolicitud(result.rows[0], []) : null
+    async markArrived(id, driverId, pin) {
+        const { rows } = await this.db.query(`
+            UPDATE solicitudes SET estado = 'en_recogida', llegadaAt = now(), pin = $3
+            WHERE idSolicitud = $1 AND idConductor = $2 AND estado = 'aceptada' RETURNING *
+        `, [id, driverId, pin])
+        return rows[0]
+    }
+
+    async startTrip(id, driverId, pin) {
+        const { rows } = await this.db.query(`
+            UPDATE solicitudes SET estado = 'en_curso', iniciadoAt = now(), pin = NULL
+            WHERE idSolicitud = $1 AND idConductor = $2 AND estado = 'en_recogida' AND pin = $3
+            RETURNING *
+        `, [id, driverId, pin])
+        return rows[0]
     }
 
     async findCurrentForClient(idUsuario){
