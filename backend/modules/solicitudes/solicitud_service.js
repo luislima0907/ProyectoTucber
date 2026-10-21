@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import TarifaService from '../tarifas/tarifa_service.js'
 
-const REQUEST_TTL_SECONDS = 90
+const REQUEST_TTL_SECONDS = 60
 
 function generatePin4(){
     return String(crypto.randomInt(0, 10000)).padStart(4, '0')
@@ -14,6 +14,7 @@ export default class SolicitudService{
     }
 
     async create(idUsuario, request){
+        await this.repository.expireSearches()
         const existing = await this.repository.findByAttempt(idUsuario, request.idempotencyKey)
         if (existing){
             return existing
@@ -34,6 +35,7 @@ export default class SolicitudService{
     }
 
     async getCurrent(idUsuario){
+        await this.repository.expireSearches()
         const row = await this.repository.findCurrentForClient(idUsuario)
         if (!row) return null
         return this.repository.toSolicitud(row, [])

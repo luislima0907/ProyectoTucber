@@ -3,6 +3,24 @@ export default class SolicitudRepository{
         this.db = db
     }
 
+    async expireSearches(){
+        const result = await this.db.query(`
+            WITH expired AS (
+                UPDATE solicitudes
+                SET estado = 'vencida'
+                WHERE estado = 'buscando' AND expiresAt <= now()
+                RETURNING *
+            ), released AS (
+                UPDATE ofertas
+                SET estado = 'expirada'
+                WHERE estado = 'vigente'
+                  AND (expiresAt <= now() OR idSolicitud IN (SELECT idSolicitud FROM expired))
+            )
+            SELECT * FROM expired
+        `)
+        return result.rows
+    }
+
     async findByAttempt(idUsuario, idIntento){
         const result = await this.db.query(
             `SELECT *
