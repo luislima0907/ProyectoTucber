@@ -39,7 +39,7 @@ export default class AuthController {
             ...this.cookieOptions,
             maxAge: 8 * 60 * 60 * 1000,
         })
-        res.json({ user: session.user })
+        res.json({ user: session.user, token: session.token })
     }
 
     async getCurrentUser(req, res) {
