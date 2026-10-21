@@ -1,0 +1,89 @@
+.auth-container:has(.confirmacion-viaje) {
+    align-items: flex-start;
+    min-height: 100dvh;
+    padding: 24px 12px;
+}
+
+.app-card.confirmacion-viaje {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.confirmacion-viaje .datos-confirmacion {
+    margin: 20px 0;
+}
+
+.confirmacion-viaje .datos-confirmacion > div {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.confirmacion-viaje dt {
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.confirmacion-viaje dd {
+    margin: 0;
+    color: var(--text-main);
+    font-weight: 700;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.confirmacion-viaje .aviso-cotizacion {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.confirmacion-viaje .acciones-confirmacion {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.confirmacion-viaje .btn-corregir {
+    min-height: 48px;
+    padding: 12px 16px;
+    border: 2px solid var(--primary-green);
+    border-radius: 12px;
+    background: white;
+    color: var(--primary-green);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.confirmacion-viaje .btn-corregir:hover {
+    background: var(--bg-selected);
+}
+
+.confirmacion-viaje .btn-corregir:focus-visible {
+    outline: 3px solid var(--primary-green);
+    outline-offset: 3px;
+}
+
+.confirmacion-viaje .btn-submit {
+    margin-top: 0;
+}
+
+.confirmacion-viaje > small {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+    .app-card.confirmacion-viaje {
+        padding: 20px;
+    }
+}
+
+.confirmacion-viaje .btn-corregir:disabled,
+.cliente-contenido .cliente-volver:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

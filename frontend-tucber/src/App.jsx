@@ -3,6 +3,9 @@ import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/useAuth'
 import { RegisterForm } from './components/RegisterForm'
 import { LoginForm } from './components/LoginForm'
+import { ClienteHome } from './pages/ClienteHome'
+import { ConductorHome } from './pages/ConductorHome'
+import { SeleccionViaje } from './pages/SeleccionViaje'
 
 function MainContent() {
     const { user, logout, loading } = useAuth()
@@ -13,41 +16,28 @@ function MainContent() {
     }
 
     if (user) {
+        if (user.rol === 'cliente') {
+            return <ClienteHome user={user} onLogout={logout} />
+        }
+        
+        if (user.rol === 'conductor') {
+            return <ConductorHome user={user} onLogout={logout} />
+        }
+
         return (
             <div className="app-card" style={{ textAlign: 'center' }}>
-                <h1 className="brand-title">¡Hola, {user.nombre}!</h1>
-                <p className="subtitle">Sesión activa en TUCBER</p>
-
-                <div className="diamond-divider" style={{ justifyContent: 'center' }}>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                    <span className="diamond" style={{ background: '#d97706' }}></span>
-                    <span className="diamond" style={{ background: '#0284c7' }}></span>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                    <span className="diamond" style={{ background: '#d97706' }}></span>
-                    <span className="diamond" style={{ background: '#0284c7' }}></span>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                    <span className="diamond" style={{ background: '#d97706' }}></span>
-                    <span className="diamond" style={{ background: '#0284c7' }}></span>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                    <span className="diamond" style={{ background: '#d97706' }}></span>
-                    <span className="diamond" style={{ background: '#0284c7' }}></span>
-                    <span className="diamond" style={{ background: '#006852' }}></span>
-                </div>
-
-                <div style={{ textTransform: 'capitalize', margin: '1rem 0', textAlign: 'left', background: '#fafcfb', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid #e2e8e5' }}>
-                    <p style={{ margin: '0.3rem 0', fontSize: '0.9rem' }}><strong>Correo:</strong> {user.correo}</p>
-                    <p style={{ margin: '0.3rem 0', fontSize: '0.9rem' }}><strong>Rol:</strong> {user.rol}</p>
-                </div>
-
-                {!user.isVerified && (
-                    <div className="verify-box" style={{ textAlign: 'left' }}>
-                      <strong>Verificación pendiente:</strong> No puedes realizar ni aceptar viajes hasta completar la verificación de la cuenta.
-                    </div>
-                )}
-
-                <button onClick={logout} className="btn-submit">
-                    Cerrar sesión
+                <h1 className="brand-title">Rol no válido</h1>
+                
+                <p className="subtitle">
+                    No se pudo identificar el rol asociado a tu cuenta.
+                </p>
+                
+                <button
+                    type="button"
+                    onClick={logout}
+                    className="btn-submit"
+                >
+                    Volver al inicio de sesión
                 </button>
             </div>
         )
@@ -61,6 +51,16 @@ function MainContent() {
 }
 
 function App() {
+        const parametros = new URLSearchParams(window.location.search)
+
+    if (parametros.get('vista') === 'seleccion') {
+        return (
+            <div className="auth-container">
+                <SeleccionViaje />
+            </div>
+        )
+    }
+    
     return (
         <AuthProvider>
             <div className="auth-container">

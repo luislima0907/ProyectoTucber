@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useAuth } from "../context/useAuth"
 import {useFormValidation} from "../hooks/useFormValidation"
-import { validateEmail, validatePassword, validateRequired, validateRole } from "../utils/validationUtils"
+import { validateEmail, validatePassword, validateRequired, validateRole, validatePhone } from "../utils/validationUtils"
 
 export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
     const { register } = useAuth()
@@ -11,15 +11,19 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
         nombre: (val) => validateRequired(val, 'El nombre completo'),
         correo: validateEmail,
         contrasena: (val) => validatePassword(val, 8),
+        telefono: validatePhone,
         rol: validateRole
     }
 
     const{values, setValues, errors, handlChange, handleBlur, validateAll, handleBackendErrors} =
-    useFormValidation({nombre: '', correo: '', contrasena: '', rol: 'cliente'},validators)
+    useFormValidation({nombre: '', correo: '', contrasena: '', telefono: '', rol: 'cliente'},validators)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
+        if(isSubmitting) return
         if (!validateAll()) return
+
         setIsSubmitting(true)
 
         try {
@@ -54,7 +58,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                 <span className="diamond" style={{ background: '#006852' }}></span>
             </div>
 
-            {errors.general && <div className="error-msg">{errors.general}</div>}
+            {errors._general && <div className="error-msg">{errors._general}</div>}
 
             <div className="form-group">
                 <label htmlFor="nombre" className={errors.nombre ? 'label-error' : ''}>
@@ -65,6 +69,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                     value={values.nombre}
                     onChange={handlChange}
                     onBlur={handleBlur}
+                    disabled={isSubmitting}
                     required
                 />
                 {errors.nombre && <span className="field-error-msg">{errors.nombre}</span>}
@@ -84,6 +89,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                     onChange={handlChange}
                     onBlur={handleBlur}
                     autoComplete="email"
+                    disabled={isSubmitting}
                     required
                 />
                 {errors.correo && <span className="field-error-msg">{errors.correo}</span>}
@@ -103,9 +109,30 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                     onChange={handlChange}
                     onBlur={handleBlur}
                     autoComplete="new-password"
+                    disabled={isSubmitting}
                     required
                 />
                 {errors.contrasena && <span className="field-error-msg">{errors.contrasena}</span>}
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="telefono" className={errors.telefono ? 'label-error' : ''}>
+                    Teléfono
+                </label>
+                <input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    className={`form-input ${errors.telefono ? 'input-error' : ''}`}
+                    placeholder="55555555"
+                    value={values.telefono}
+                    onChange={handlChange}
+                    onBlur={handleBlur}
+                    autoComplete="tel"
+                    disabled={isSubmitting}
+                    required
+                />
+                {errors.telefono && <span className="field-error-msg">{errors.telefono}</span>}
             </div>
 
             <div className="form-group" style={{ marginTop: '0.2rem' }}>
@@ -115,7 +142,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
                 <div className="role-picker">
                     <div
                         className={`role-card ${values.rol === 'cliente' ? 'selected' : ''}`}
-                        onClick ={()=> setValues(prev => ({ ...prev, rol: 'cliente' }))}
+                        onClick ={()=> !isSubmitting && setValues(prev => ({ ...prev, rol: 'cliente' }))}
                     >
                         <input
                             type="radio"
@@ -130,7 +157,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
 
                     <div
                         className={`role-card ${values.rol === 'conductor' ? 'selected' : ''}`}
-                        onClick ={()=> setValues(prev => ({ ...prev, rol: 'conductor' }))}
+                        onClick ={()=> !isSubmitting && setValues(prev => ({ ...prev, rol: 'conductor' }))}
                     >
                         <input
                             type="radio"
@@ -147,13 +174,13 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }) => {
             </div>
 
             <button type="submit" disabled={isSubmitting} className="btn-submit">
-                {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+                {isSubmitting ? 'Procesando...' : 'Crear cuenta'}
             </button>
 
             {onSwitchToLogin && (
                 <p className="switch-text">
                     ¿Ya tienes cuenta?{' '}
-                    <button type="button" onClick={onSwitchToLogin} className="link-btn">
+                    <button type="button" onClick={onSwitchToLogin} disabled={isSubmitting} className="link-btn">
                         Inicia sesión
                     </button>
                 </p>

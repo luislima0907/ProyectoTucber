@@ -25,6 +25,13 @@ export const validateRequired= (value, fieldName = 'Este campo') => {
     return null
 }
 
+export const validatePhone = (phone) => {
+    if (!phone || !phone.trim()) return 'El teléfono es obligatorio'
+    const phoneRegex = /^\d{8}$/
+    if (!phoneRegex.test(phone.trim())) return 'El teléfono debe tener 8 dígitos (sin el +502)'
+    return null
+}
+
 export const validateRole = (role) => {
     const allowedRoles = ['cliente', 'conductor']
     if (!allowedRoles.includes(role))

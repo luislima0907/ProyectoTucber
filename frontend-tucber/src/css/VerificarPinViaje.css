@@ -1,0 +1,233 @@
+
+.verificar-pin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+    align-items: center;
+    gap: 48px;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+}
+
+.verificar-pin-informacion,
+.verificar-pin-formulario {
+    min-width: 0;
+}
+
+.verificar-pin-etiqueta {
+    color: #006b57;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.verificar-pin-informacion h2 {
+    margin: 12px 0;
+    font-size: clamp(28px, 3vw, 42px);
+    line-height: 1.2;
+}
+
+.verificar-pin-informacion > p {
+    line-height: 1.6;
+}
+
+.verificar-pin-viaje {
+    margin-top: 28px;
+    padding: 24px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+}
+
+.verificar-pin-viaje h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+}
+
+.verificar-pin-viaje p {
+    margin: 10px 0;
+    overflow-wrap: anywhere;
+}
+
+.verificar-pin-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.verificar-pin-formulario h3 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.verificar-pin-formulario > p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.verificar-pin-formulario label {
+    font-weight: 600;
+}
+
+.verificar-pin-casillas {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    min-height: 64px;
+    cursor: text;
+}
+
+.verificar-pin-casillas span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 64px;
+    background: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 28px;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.verificar-pin-casillas:focus-within span {
+    border-color: #006b57;
+}
+
+.verificar-pin-casillas input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: text;
+}
+
+.verificar-pin-error {
+    padding: 12px;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+}
+
+.verificar-pin-formulario button {
+    width: 100%;
+    min-height: 50px;
+    padding: 12px 16px;
+    color: #ffffff;
+    background: #006b57;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.verificar-pin-formulario button:hover:not(:disabled) {
+    background: #005342;
+}
+
+.verificar-pin-formulario button:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 3px;
+}
+
+.verificar-pin-formulario button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .verificar-pin {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 24px 16px;
+    }
+
+    .verificar-pin-formulario {
+        padding: 24px 20px;
+    }
+
+    .verificar-pin-informacion h2 {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 380px) {
+    .verificar-pin-formulario {
+        padding: 20px 14px;
+    }
+
+    .verificar-pin-casillas {
+        gap: 8px;
+    }
+
+    .verificar-pin-casillas span {
+        height: 56px;
+        font-size: 24px;
+    }
+}
+
+.verificar-pin-viaje strong {
+    margin-right: 6px;
+}
+
+.verificar-pin-confirmacion {
+    width: min(100%, 520px);
+    margin: 60px auto;
+    padding: 36px;
+    background: #ffffff;
+    border: 1px solid #dbe7e3;
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    text-align: center;
+}
+
+.verificar-pin-confirmacion h2 {
+    margin: 0 0 16px;
+    color: #006b57;
+    font-size: clamp(24px, 3vw, 30px);
+}
+
+.verificar-pin-confirmacion p {
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.verificar-pin-reintentar {
+    min-height: 48px;
+    padding: 12px 24px;
+    color: #ffffff;
+    background: #006b57;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.verificar-pin-reintentar:hover {
+    background: #005342;
+}
+
+.verificar-pin-reintentar:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+    .verificar-pin-confirmacion {
+        margin: 24px auto;
+        padding: 28px 20px;
+    }
+}

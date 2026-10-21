@@ -1,22 +1,16 @@
-import express from 'express'
+import 'dotenv/config'
 import { pool } from './infrastructure/db/db.js'
-import { modules } from './infrastructure/registry.js'
+import { runMigrations } from './infrastructure/db/migrations/setup.js'
+import { createApplication } from './app.js'
 
+await runMigrations(pool)
+const { server, searchEngine } = createApplication(pool)
+server.listen(process.env.PORT || 3001, () => console.log('TUCBER está listo.'))
 
-
-
-function setup(){
-    const app = express()
-
-    for (let i = 0; i < modules.length; i++){
-        new modules[i].controller(app, new modules[i].service(new modules[i].repository(pool)))
-
-    }
-
-    app.listen("3000", () =>{
-        console.log("the server is alive")
-    })
+function shutdown() {
+    searchEngine.close()
+    server.close(() => pool.end())
 }
 
-
-setup()
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
