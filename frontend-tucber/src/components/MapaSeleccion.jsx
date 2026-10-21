@@ -17,7 +17,8 @@ export function MapaSeleccion({
     destino,
     centro,
     ruta,
-    onSeleccionar
+    onSeleccionar,
+    soloLectura = false
 }) {
     const contenedor = useRef(null)
     const mapa = useRef(null)
@@ -92,7 +93,7 @@ export function MapaSeleccion({
     }, [])
 
     useEffect(() => {
-        if (!listo || !mapa.current) return
+        if (!listo || !mapa.current || soloLectura) return
 
         const evento = mapa.current.addListener('click', event => {
             if (!event.latLng) return
@@ -104,7 +105,7 @@ export function MapaSeleccion({
         })
 
         return () => evento.remove()
-    }, [listo, onSeleccionar])
+    }, [listo, onSeleccionar, soloLectura])
 
     useEffect(() => {
         if (!listo || !mapa.current) return
@@ -182,26 +183,30 @@ export function MapaSeleccion({
 
     return (
         <section>
-            <label htmlFor="punto-activo">
-                ¿Qué punto quieres marcar o corregir?
-            </label>
+            {!soloLectura && (
+                <>
+                    <label htmlFor="punto-activo">
+                        ¿Qué punto quieres marcar o corregir?
+                    </label>
 
-            <select
-                id="punto-activo"
-                className="form-input"
-                defaultValue="origen"
-                onChange={event => {
-                    puntoActivo.current = event.target.value
-                }}
-            >
-                <option value="origen">Origen — O verde</option>
-                <option value="destino">Destino — D azul</option>
-            </select>
+                    <select
+                        id="punto-activo"
+                        className="form-input"
+                        defaultValue="origen"
+                        onChange={event => {
+                            puntoActivo.current = event.target.value
+                        }}
+                    >
+                        <option value="origen">Origen — O verde</option>
+                        <option value="destino">Destino — D azul</option>
+                    </select>
 
-            <p>
-                Elige el punto y pulsa sobre el mapa para ubicarlo.
-                Puedes repetirlo para corregirlo.
-            </p>
+                    <p>
+                        Elige el punto y pulsa sobre el mapa para ubicarlo.
+                        Puedes repetirlo para corregirlo.
+                    </p>
+                </>
+            )}
 
             {!listo && !error && <p>Cargando mapa…</p>}
 

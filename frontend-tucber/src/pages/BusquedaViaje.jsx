@@ -7,14 +7,19 @@ import {
 import '../css/ConfirmacionViaje.css'
 import '../css/BusquedaViaje.css'
 import { PerfilConductor } from '../components/PerfilConductor'
+import { MapaSeleccion } from '../components/MapaSeleccion'
 
 const INTERVALO_CONSULTA = 4000
 
-export function BusquedaViaje({ solicitud,onReintentar,
+export function BusquedaViaje({ solicitud, seleccion, onReintentar,
     onCambiarRecogida }) {
     const [solicitudActual, setSolicitudActual] = useState(solicitud)
     const [cargando, setCargando] = useState(true)
     const [error, setError] = useState('')
+    const [pinRecogida, setPinRecogida] = useState(null)
+    const [errorPin, setErrorPin] = useState('')
+    const [consultandoPin, setConsultandoPin] = useState(false)
+    const [reintentoPin, setReintentoPin] = useState(0)
     const [actualizacion, setActualizacion] = useState(0)
     const [descartando, setDescartando] = useState(null)
     const [aceptando, setAceptando] = useState(null)
@@ -40,8 +45,11 @@ export function BusquedaViaje({ solicitud,onReintentar,
             return
         }
 
-        // Detener las consultas cuando ya no está buscando.
-        if (solicitudActual?.status !== 'buscando') {
+        if (
+            !['buscando', 'aceptada', 'en_recogida'].includes(
+                solicitudActual?.status
+            )
+        ){
             setCargando(false)
             return
         }
@@ -66,7 +74,9 @@ export function BusquedaViaje({ solicitud,onReintentar,
                 setSolicitudActual(actual)
                 setError('')
 
-                continuar = actual?.status === 'buscando'
+                continuar = ['buscando', 'aceptada', 'en_recogida'].includes(
+                    actual?.status
+                )
             } catch (errorConsulta) {
                 if (!pantallaActiva) return
 
@@ -103,6 +113,54 @@ export function BusquedaViaje({ solicitud,onReintentar,
         descartando,
         aceptacionPendiente
     ])
+
+    useEffect(() => {
+        if (solicitudActual?.status !== 'en_recogida' || error) {
+            setPinRecogida(null)
+            setErrorPin('')
+            setConsultandoPin(false)
+            return
+        }
+
+        const control = new AbortController()
+        let activo = true
+
+        async function obtenerPin() {
+            setConsultandoPin(true)
+            setErrorPin('')
+
+            try {
+                const pin = await viajeService.consultarPin(
+                    solicitudActual.id,
+                    control.signal
+                )
+
+                if (activo) {
+                    setPinRecogida(pin)
+                }
+            } catch (errorConsulta) {
+                if (activo) {
+                    setPinRecogida(null)
+                    setErrorPin(
+                        'No se pudo consultar el PIN. ' +
+                        mensajeViaje(errorConsulta)
+                    )
+                }
+            } finally {
+                if (activo) {
+                    setConsultandoPin(false)
+                }
+            }
+        }
+
+        obtenerPin()
+
+        return () => {
+            activo = false
+            control.abort()
+        }
+    }, [solicitudActual?.id, solicitudActual?.status, error, reintentoPin])
+
 
     // Actualiza la hora para comprobar los vencimientos.
     useEffect(() => {
@@ -150,6 +208,7 @@ export function BusquedaViaje({ solicitud,onReintentar,
     const nombreEstado = {
         buscando: 'Buscando conductor...',
         aceptada: 'Conductor asignado',
+        en_recogida: 'Tu conductor ha llegado al punto de recogida',
         en_curso: 'Viaje en curso...',
         completada: 'Viaje finalizado',
         cancelada: 'Solicitud cancelada',
@@ -173,6 +232,7 @@ export function BusquedaViaje({ solicitud,onReintentar,
 
             if (
                 actual.status === 'aceptada' ||
+                actual.status === 'en_recogida' ||
                 actual.status === 'en_curso'
             ) {
                 setAceptacionPendiente(false)
@@ -325,6 +385,14 @@ export function BusquedaViaje({ solicitud,onReintentar,
                     ? 'Búsqueda de conductor'
                     : 'Estado de tu solicitud'}
             </h1>
+            <div className='busqueda-viaje-mapa'>
+                <MapaSeleccion
+                    origen={seleccion?.origen ?? solicitudActual?.origin}
+                    destino={seleccion?.destino ?? solicitudActual?.destination}
+                    ruta={seleccion?.cotizacion?.polyline}
+                    soloLectura
+                />
+            </div>
 
             <p>Tu solicitud fue registrada correctamente.</p>
 
@@ -417,6 +485,59 @@ export function BusquedaViaje({ solicitud,onReintentar,
                     </p>
                 )}
 
+                {solicitudActual?.status === 'en_recogida' && !error &&(
+                    <section className='aviso-llegada' aria-labelledby='titulo-llegada'>
+                        <h3 id="titulo-llegada">¡Tu conductor ha llegado!</h3>
+
+                        <p>
+                            Tu conductor se encuentra en el punto de recogida.
+                        </p>
+
+                        <p>
+                            Antes de subir, verifica que la placa y el vehiculo
+                            coincidan con los datos del conductor asignado
+                        </p>
+
+                        <p>
+                            Comprate tu PIN únicamente después de confirmar
+                            que es el vehículo correcto.
+                        </p>
+
+                        {consultandoPin && (
+                            <p role="status">Consultando PIN de recogida...</p>
+                        )}
+
+
+                        {errorPin && (
+                            <div>
+                                <p className="error-msg" role="alert">
+                                    {errorPin}
+                                </p>
+
+                                <button
+                                    type="button"
+                                    className="btn-oferta btn-actualizar"
+                                    disabled={consultandoPin}
+                                    onClick={() => setReintentoPin(valor => valor + 1)}
+                                >
+                                    Reintentar consulta del PIN
+                                </button>
+                            </div>
+                        )}
+
+                        {pinRecogida && !error && (
+                            <div className="pin-recogida">
+                                <h4>PIN de recogida</h4>
+                                <p className="pin-recogida-codigo">{pinRecogida}</p>
+                                <p>
+                                    Comparte este código únicamente con el conductor
+                                    asignado, después de verificar su vehículo.
+                                </p>
+                            </div>
+                        )}
+                    </section>
+                )}
+
                 {!cargando && !error && !solicitudActual && (
                     <p>No tienes una solicitud activa.</p>
                 )}
@@ -501,7 +622,7 @@ export function BusquedaViaje({ solicitud,onReintentar,
                         </button>
                     </div>
                 )}
-                
+
                 {buscando && (
                     <div className="cancelacion-viaje">
                         {!mostrarCancelacion ? (

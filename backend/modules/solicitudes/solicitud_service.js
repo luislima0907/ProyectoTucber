@@ -118,7 +118,7 @@ export default class SolicitudService{
             error.code = 'CONFLICT'
             throw error
         }
-        if (row.estado === 'cancelada' || row.estado === 'completada' || row.estado === 'vencida'){
+        if (row.estado !== 'en_recogida' || row.pinconsumido){
             const error = new Error('El PIN no está disponible para este viaje')
             error.code = 'CONFLICT'
             throw error

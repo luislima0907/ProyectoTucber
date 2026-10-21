@@ -163,6 +163,7 @@ export function ConfirmacionViaje({
         return (
             <BusquedaViaje
                 solicitud={solicitud}
+                seleccion={seleccion}
                 onReintentar={onReintentar}
                 onCambiarRecogida={onVolver}
             />
