@@ -1,22 +1,22 @@
 import { api } from '../config/api'
 
 export const authService = {
-    async register(data){
+    async register(data) {
         const response = await api.post('/auth/register', data)
         return response.data.user
     },
 
-    async login(data){
+    async login(data) {
         const response = await api.post('/auth/login', data)
         return response.data.user
     },
 
-    async getProfile(){
+    async getProfile() {
         const response = await api.get('/auth/me')
         return response.data.user
     },
 
-    async logout(){
+    async logout() {
         await api.post('/auth/logout')
-    }
+    },
 }

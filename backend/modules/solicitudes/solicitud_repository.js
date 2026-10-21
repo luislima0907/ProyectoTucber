@@ -1,9 +1,9 @@
-export default class SolicitudRepository{
-    constructor(db){
+export default class SolicitudRepository {
+    constructor(db) {
         this.db = db
     }
 
-    async expireSearches(){
+    async expireSearches() {
         const result = await this.db.query(`
             WITH expired AS (
                 UPDATE solicitudes
@@ -21,19 +21,19 @@ export default class SolicitudRepository{
         return result.rows
     }
 
-    async findByAttempt(idUsuario, idIntento){
+    async findByAttempt(idUsuario, idIntento) {
         const result = await this.db.query(
             `SELECT *
              FROM solicitudes
              WHERE idUsuario = $1 AND idIntento = $2`,
-            [idUsuario, idIntento]
+            [idUsuario, idIntento],
         )
         return result.rows[0] ? this.toSolicitud(result.rows[0], []) : null
     }
 
-    async createWithProtection(data){
+    async createWithProtection(data) {
         const client = await this.db.connect()
-        try{
+        try {
             await client.query('BEGIN')
             await client.query('SELECT pg_advisory_xact_lock($1)', [data.idUsuario])
 
@@ -41,9 +41,9 @@ export default class SolicitudRepository{
                 `SELECT *
                  FROM solicitudes
                  WHERE idUsuario = $1 AND idIntento = $2`,
-                [data.idUsuario, data.idIntento]
+                [data.idUsuario, data.idIntento],
             )
-            if (existing.rowCount === 1){
+            if (existing.rowCount === 1) {
                 await client.query('COMMIT')
                 return this.toSolicitud(existing.rows[0], [])
             }
@@ -55,20 +55,21 @@ export default class SolicitudRepository{
                    AND estado IN ('buscando', 'aceptada', 'en_recogida', 'en_curso')
                    AND (estado <> 'buscando' OR expiresAt > now())
                  LIMIT 1`,
-                [data.idUsuario]
+                [data.idUsuario],
             )
-            if (active.rowCount === 1){
+            if (active.rowCount === 1) {
                 const error = new Error('El cliente ya tiene un viaje activo')
                 error.code = 'ACTIVE_REQUEST'
+                error.status = 409
                 throw error
             }
 
             const result = await client.query(
                 `INSERT INTO solicitudes
                     (idUsuario, idIntento, origen, destino, referencia,
-                     distanciaCotizadaMetros, tarifaAcordada, moneda, expiresAt)
+                     distanciaCotizadaMetros, tarifaAcordada, moneda, expiresAt, ruta)
                  VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6, $7, $8,
-                         now() + make_interval(secs => $9))
+                         now() + make_interval(secs => $9), $10)
                  RETURNING *`,
                 [
                     data.idUsuario,
@@ -79,56 +80,68 @@ export default class SolicitudRepository{
                     data.distanceMeters,
                     data.amount,
                     data.currency,
-                    data.ttlSeconds
-                ]
+                    data.ttlSeconds,
+                    data.route || null,
+                ],
             )
             await client.query('COMMIT')
             return this.toSolicitud(result.rows[0], [])
-        }catch(error){
+        } catch (error) {
             await client.query('ROLLBACK')
             throw error
-        }finally{
+        } finally {
             client.release()
         }
     }
 
-    findByIdForUpdate(idSolicitud, tx){
+    findByIdForUpdate(idSolicitud, tx) {
         const db = tx ?? this.db
-        return db.query(
-            `SELECT *
+        return db
+            .query(
+                `SELECT *
              FROM solicitudes
              WHERE idSolicitud = $1
              FOR UPDATE`,
-            [idSolicitud]
-        ).then(r => r.rows[0] || null)
+                [idSolicitud],
+            )
+            .then((r) => r.rows[0] || null)
     }
 
-    findById(idSolicitud){
-        return this.db.query(
-            `SELECT *
-            FROM solicitudes
-            WHERE idSolicitud = $1`,
-            [idSolicitud]
-        ).then(r => r.rows[0] || null)
+    async findById(idSolicitud) {
+        const { rows } = await this.db.query(`
+            SELECT s.*, u.nombre AS conductorNombre, c.placaVehiculo
+            FROM solicitudes s
+            LEFT JOIN usuarios u ON u.idUsuario = s.idConductor
+            LEFT JOIN conductores c ON c.idUsuario = s.idConductor
+            WHERE s.idSolicitud = $1
+        `, [idSolicitud])
+        return rows[0] || null
     }
 
-    async markArrived(idSolicitud, idConductor, tx){
-        const db = tx ?? this.db
-        const result = await db.query(
-            `UPDATE solicitudes
-                SET estado = 'en_recogida',
-                    llegadaAt = COALESCE(llegadaAt, now()),
-                    pin = COALESCE(pin, LPAD(floor(random()*10000)::text, 4, '0'))
-              WHERE idSolicitud = $1
-                AND idConductor = $2
-                AND estado = 'aceptada'
-            RETURNING *`,
-            [idSolicitud, idConductor]
+    async markArrived(id, driverId, pin) {
+        const { rows } = await this.db.query(
+            `
+            UPDATE solicitudes SET estado = 'en_recogida', llegadaAt = now(), pin = $3
+            WHERE idSolicitud = $1 AND idConductor = $2 AND estado = 'aceptada' RETURNING *
+        `,
+            [id, driverId, pin],
         )
-        return result.rows[0] ? this.toSolicitud(result.rows[0], []) : null
+        return rows[0]
     }
 
-    async findCurrentForClient(idUsuario){
+    async startTrip(id, driverId, pin) {
+        const { rows } = await this.db.query(
+            `
+            UPDATE solicitudes SET estado = 'en_curso', iniciadoAt = now(), pin = NULL
+            WHERE idSolicitud = $1 AND idConductor = $2 AND estado = 'en_recogida' AND pin = $3
+            RETURNING *
+        `,
+            [id, driverId, pin],
+        )
+        return rows[0]
+    }
+
+    async findCurrentForClient(idUsuario) {
         const result = await this.db.query(
             `SELECT *
              FROM solicitudes
@@ -137,12 +150,12 @@ export default class SolicitudRepository{
                AND (estado <> 'buscando' OR expiresAt > now())
              ORDER BY createAt DESC
              LIMIT 1`,
-            [idUsuario]
+            [idUsuario],
         )
         return result.rows[0] || null
     }
 
-    async findCurrentForDriver(idConductor){
+    async findCurrentForDriver(idConductor) {
         const result = await this.db.query(
             `SELECT *
              FROM solicitudes
@@ -150,12 +163,12 @@ export default class SolicitudRepository{
                AND estado IN ('aceptada', 'en_recogida', 'en_curso')
              ORDER BY createAt DESC
              LIMIT 1`,
-            [idConductor]
+            [idConductor],
         )
         return result.rows[0] || null
     }
 
-    toSolicitud(row, ofertas){
+    toSolicitud(row, ofertas) {
         return {
             id: row.idsolicitud,
             origin: row.origen,
@@ -170,7 +183,13 @@ export default class SolicitudRepository{
             llegadaAt: row.llegadaat,
             iniciadoAt: row.iniciadoat,
             driverId: row.idconductor,
-            offers: ofertas
+            paymentConfirmed: row.pagoconfirmado ?? false,
+            finishedAt: row.finalizadoat,
+            rating: row.calificacion,
+            driverName: row.conductornombre,
+            vehiclePlate: row.placavehiculo,
+            route: row.ruta,
+            offers: ofertas,
         }
     }
 }

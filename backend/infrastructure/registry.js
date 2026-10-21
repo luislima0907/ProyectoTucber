@@ -1,6 +1,6 @@
-import UserRepository from '../modules/users/user_repository.js'
-import UserController from '../modules/users/user_controller.js'
-import UserService from '../modules/users/user_service.js'
+import ViajeController from '../modules/viajes/viaje_controller.js'
+import ViajeService from '../modules/viajes/viaje_service.js'
+import ViajeRepository from '../modules/viajes/viaje_repository.js'
 
 import AuthController from '../modules/auth/auth_controller.js'
 import AuthService from '../modules/auth/auth_service.js'
@@ -16,37 +16,29 @@ import SolicitudService from '../modules/solicitudes/solicitud_service.js'
 import SolicitudRepository from '../modules/solicitudes/solicitud_repository.js'
 
 export const modules = [
+    { controller: ViajeController, service: ViajeService, repository: ViajeRepository },
     {
-        controller: UserController,
-        service: UserService,
-        repository: UserRepository,
-        public: false
-    },
-    {    
         controller: AuthController,
         service: AuthService,
         repository: AuthRepository,
-        public: true
-        
-    
+        public: true,
     },
     {
         controller: DriverController,
         service: DriverService,
         repository: DriverRepository,
-        public: false
+        public: false,
     },
     {
         controller: TarifaController,
         service: TarifaService,
         repository: null,
-        public: false
+        public: false,
     },
     {
         controller: SolicitudController,
         service: SolicitudService,
         repository: SolicitudRepository,
-        public: false
+        public: false,
     },
-
 ]
