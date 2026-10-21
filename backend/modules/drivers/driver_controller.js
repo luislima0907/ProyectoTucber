@@ -30,7 +30,7 @@ export default class DriverController{
             return null
         }
         if (req.user?.rol !== 'conductor'){
-            res.status(403).json({ message: 'Solo los conductores pueden gestionar el perfil del vehículo.' })
+            res.status(403).json({ message: 'Esta acción requiere una cuenta de conductor.' })
             return null
         }
         return idUsuario

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { API_URL } from '../config/api'
+import { getAccessToken } from '../config/auth'
 
 export function useSearchEngine() {
     const socket = useRef(null)
@@ -16,7 +17,9 @@ export function useSearchEngine() {
             const url = new URL(API_URL, window.location.origin)
             url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
             url.pathname = '/search'
-            const connection = new WebSocket(url)
+            const token = getAccessToken()
+            if (!token) return
+            const connection = new WebSocket(url, ['tucber', token])
             socket.current = connection
             connection.onopen = () => {
                 if (active) setConnected(true)

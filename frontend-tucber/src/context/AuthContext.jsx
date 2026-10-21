@@ -7,11 +7,14 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        const clearUser = () => setUser(null)
+        window.addEventListener('tucber:logout', clearUser)
         authService
             .getProfile()
             .then((userData) => setUser(userData))
             .catch(() => setUser(null))
             .finally(() => setLoading(false))
+        return () => window.removeEventListener('tucber:logout', clearUser)
     }, [])
 
     const login = async (credentials) => {
