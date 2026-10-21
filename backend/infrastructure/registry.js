@@ -17,31 +17,28 @@ import SolicitudRepository from '../modules/solicitudes/solicitud_repository.js'
 
 export const modules = [
     { controller: ViajeController, service: ViajeService, repository: ViajeRepository },
-    {    
+    {
         controller: AuthController,
         service: AuthService,
         repository: AuthRepository,
-        public: true
-        
-    
+        public: true,
     },
     {
         controller: DriverController,
         service: DriverService,
         repository: DriverRepository,
-        public: false
+        public: false,
     },
     {
         controller: TarifaController,
         service: TarifaService,
         repository: null,
-        public: false
+        public: false,
     },
     {
         controller: SolicitudController,
         service: SolicitudService,
         repository: SolicitudRepository,
-        public: false
+        public: false,
     },
-
 ]

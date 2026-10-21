@@ -15,20 +15,24 @@ export default class ViajeController {
     async update(req, res, action) {
         const trip = await this.service[action](Number(req.params.id), req.user, req.body.stars)
         const search = req.app.locals.searchEngine
-        search.publishTrip(trip)
+        await search.publishTrip(trip)
         await search.broadcastPending()
         res.json({ solicitud: search.requestService.repository.toSolicitud(trip, []) })
     }
 
     async report(req, res) {
-        const report = await this.service.report(Number(req.params.id), req.user, req.body.description)
+        const report = await this.service.report(
+            Number(req.params.id),
+            req.user,
+            req.body.description,
+        )
         res.status(201).json(report)
     }
 
     async getHistory(req, res) {
         const rows = await this.service.repository.findHistory(req.user.sub)
         const repository = req.app.locals.searchEngine.requestService.repository
-        res.json(rows.map(row => repository.toSolicitud(row, [])))
+        res.json(rows.map((row) => repository.toSolicitud(row, [])))
     }
 
     async getEarnings(req, res) {

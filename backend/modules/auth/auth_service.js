@@ -19,14 +19,21 @@ export default class AuthService {
 
     async loginUser(credentials) {
         const user = await this.repository.findByEmail(credentials.correo)
-        if (!user || !await bcrypt.compare(credentials.contrasena, user.contrasenahash)) {
+        if (!user || !(await bcrypt.compare(credentials.contrasena, user.contrasenahash))) {
             throw new HttpError(401, 'Correo o contraseña incorrectos.')
         }
-        return this.createSession({ id: user.idusuario, nombre: user.nombre, correo: user.correo, rol: user.rol })
+        return this.createSession({
+            id: user.idusuario,
+            nombre: user.nombre,
+            correo: user.correo,
+            rol: user.rol,
+        })
     }
 
     createSession(user) {
-        const token = jwt.sign({ sub: user.id, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '8h' })
+        const token = jwt.sign({ sub: user.id, rol: user.rol }, process.env.JWT_SECRET, {
+            expiresIn: '8h',
+        })
         return { token, user }
     }
 

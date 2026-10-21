@@ -15,7 +15,8 @@ export default class ViajeService {
 
     async finish(id, user) {
         const trip = await this.getTrip(id, user)
-        if (trip.idconductor !== user.sub) throw new HttpError(403, 'Solo el conductor puede finalizar.')
+        if (trip.idconductor !== user.sub)
+            throw new HttpError(403, 'Solo el conductor puede finalizar.')
         if (trip.estado === 'completada') return trip
         return this.requireResult(await this.repository.finish(id, user.sub))
     }

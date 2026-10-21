@@ -22,31 +22,46 @@ export default class SearchRepository {
                 AND s.estado IN ('aceptada', 'en_recogida', 'en_curso')
             )
         `)
-        return rows.map(row => row.idusuario)
+        return rows.map((row) => row.idusuario)
     }
 
     async accept(idConductor, idSolicitud) {
         const client = await this.db.connect()
         try {
             await client.query('BEGIN')
-            const { rows: [driver] } = await client.query(
+            const {
+                rows: [driver],
+            } = await client.query(
                 'SELECT disponible FROM conductores WHERE idUsuario = $1 FOR UPDATE',
-                [idConductor]
+                [idConductor],
             )
             if (!driver?.disponible) throw new HttpError(409, 'Activa tu disponibilidad primero.')
-            const { rowCount } = await client.query(`
+            const { rowCount } = await client.query(
+                `
                 SELECT 1 FROM solicitudes WHERE idConductor = $1
                 AND estado IN ('aceptada', 'en_recogida', 'en_curso')
-            `, [idConductor])
+            `,
+                [idConductor],
+            )
             if (rowCount) throw new HttpError(409, 'Ya tienes un viaje activo.')
-            const { rows: [trip] } = await client.query(`
+            const {
+                rows: [trip],
+            } = await client.query(
+                `
                 UPDATE solicitudes SET idConductor = $1, estado = 'aceptada'
                 WHERE idSolicitud = $2 AND estado = 'buscando' AND expiresAt > now()
                 RETURNING *
-            `, [idConductor, idSolicitud])
+            `,
+                [idConductor, idSolicitud],
+            )
             if (!trip) throw new HttpError(409, 'Otro conductor aceptó o la búsqueda terminó.')
-            await client.query('UPDATE conductores SET disponible = false WHERE idUsuario = $1', [idConductor])
-            await client.query("UPDATE ofertas SET estado = 'retirada' WHERE idSolicitud = $1 AND estado = 'vigente'", [idSolicitud])
+            await client.query('UPDATE conductores SET disponible = false WHERE idUsuario = $1', [
+                idConductor,
+            ])
+            await client.query(
+                "UPDATE ofertas SET estado = 'retirada' WHERE idSolicitud = $1 AND estado = 'vigente'",
+                [idSolicitud],
+            )
             await client.query('COMMIT')
             return trip
         } catch (error) {

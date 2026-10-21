@@ -7,7 +7,11 @@ export default class AuthController {
     constructor(router, service) {
         this.service = service
         this.cookieName = process.env.SESSION_COOKIE_NAME || 'tucber_session'
-        this.cookieOptions = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+        this.cookieOptions = {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+        }
         router.post('/register', (req, res) => this.register(req, res))
         router.post('/login', (req, res) => this.login(req, res))
         router.get('/me', optionalAuthenticateToken, (req, res) => this.getCurrentUser(req, res))
@@ -31,7 +35,10 @@ export default class AuthController {
     }
 
     respond(res, session) {
-        res.cookie(this.cookieName, session.token, { ...this.cookieOptions, maxAge: 8 * 60 * 60 * 1000 })
+        res.cookie(this.cookieName, session.token, {
+            ...this.cookieOptions,
+            maxAge: 8 * 60 * 60 * 1000,
+        })
         res.json({ user: session.user })
     }
 

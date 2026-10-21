@@ -5,5 +5,5 @@ export const User = z.object({
     correo: z.email().toLowerCase(),
     contrasena: z.string().min(6),
     telefono: z.string().optional(),
-    rol: z.enum(['cliente', 'conductor'])
+    rol: z.enum(['cliente', 'conductor']),
 })
