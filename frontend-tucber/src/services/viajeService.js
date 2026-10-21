@@ -26,6 +26,26 @@ export function prepararPuntos(seleccion) {
 }
 
 export const viajeService = {
+    async consultarPin(idSolicitud, signal) {
+        if (!Number.isInteger(Number(idSolicitud)) || Number(idSolicitud) <= 0) {
+            throw new Error('No se ha identificado una solicitud válida.')
+        }
+
+        const { data } = await api.get(
+            `/solicitudes/${idSolicitud}/pin`,
+            {
+                signal,
+                timeout: 15000
+            }
+        )
+
+        if (typeof data?.pin !== 'string' || !/^\d{4}$/.test(data.pin)) {
+            throw new Error('El servidor no devolvió un PIN válido.')
+        }
+
+        return data.pin
+    },
+
     async iniciarViaje(idSolicitud, pin){
         if (!Number.isInteger(Number(idSolicitud)) || Number(idSolicitud) <= 0){
             throw new Error('No se ha identificado una solicitud válida.')
@@ -54,7 +74,7 @@ export const viajeService = {
 
         return data.solicitud
     },
-    
+
     async consultarActual(signal){
         const {data} = await api.get(
             '/solicitudes/actual',
@@ -151,6 +171,7 @@ export const viajeService = {
         const estadosValidos = [
             'buscando',
             'aceptada',
+            'en_recogida',
             'en_curso',
             'completada',
             'cancelada',

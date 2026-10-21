@@ -85,6 +85,15 @@ export default class SolicitudRepository{
         ).then(r => r.rows[0] || null)
     }
 
+    findById(idSolicitud){
+        return this.db.query(
+            `SELECT *
+            FROM solicitudes
+            WHERE idSolicitud = $1`,
+            [idSolicitud]
+        ).then(r => r.rows[0] || null)
+    }
+
     async markArrived(idSolicitud, idConductor, tx){
         const db = tx ?? this.db
         const result = await db.query(
