@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { TripMap } from './TripMap'
 import { ReportForm } from './ReportForm'
+import { TripTrackingStatus } from './TripTrackingStatus'
 import { tripService, getErrorMessage, formatMoney } from '../../services/tripService'
 
 const statusTitles = {
@@ -13,7 +14,15 @@ const statusTitles = {
     vencida: 'Esta vez no encontramos conductor.',
 }
 
-export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
+export function ActiveTrip({
+    trip,
+    user,
+    onChange,
+    onClose,
+    connected,
+    driverLocation,
+    trackingError,
+}) {
     const [pin, setPin] = useState('')
     const [customerPin, setCustomerPin] = useState('')
     const [busy, setBusy] = useState(false)
@@ -31,6 +40,8 @@ export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
         ? driverTitles[trip.status] || statusTitles[trip.status]
         : statusTitles[trip.status]
     const closed = ['completada', 'cancelada', 'vencida'].includes(trip.status)
+    const tracking = ['aceptada', 'en_recogida', 'en_curso'].includes(trip.status)
+    const location = tracking && driverLocation?.tripId === trip.id ? driverLocation : null
 
     useEffect(() => {
         if (trip.status !== 'buscando') return
@@ -106,6 +117,13 @@ export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
                         <strong>{trip.driverName}</strong> ·{' '}
                         {trip.vehiclePlate || 'Conductor asignado'}
                     </p>
+                )}
+                {tracking && (
+                    <TripTrackingStatus
+                        location={location}
+                        connected={connected}
+                        error={trackingError}
+                    />
                 )}
                 <div className="quote-summary">
                     <div>
@@ -240,7 +258,12 @@ export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
                 )}
                 {trip.status !== 'buscando' && <ReportForm tripId={trip.id} />}
             </section>
-            <TripMap origin={trip.origin} destination={trip.destination} route={trip.route} />
+            <TripMap
+                origin={trip.origin}
+                destination={trip.destination}
+                route={trip.route}
+                driverLocation={location}
+            />
         </div>
     )
 }

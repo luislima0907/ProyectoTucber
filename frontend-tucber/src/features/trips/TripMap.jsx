@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadMapsLibrary } from '../../config/maps'
 
-export function TripMap({ origin, destination, route, onSelect }) {
+export function TripMap({ origin, destination, route, onSelect, driverLocation }) {
     const container = useRef(null)
     const map = useRef(null)
     const select = useRef(onSelect)
+    const driverMarker = useRef(null)
+    const viewport = useRef(null)
+    const stopsKey = [
+        origin?.latitude,
+        origin?.longitude,
+        destination?.latitude,
+        destination?.longitude,
+    ].join(':')
     const [ready, setReady] = useState(false)
     const [error, setError] = useState('')
     useEffect(() => {
@@ -43,6 +51,7 @@ export function TripMap({ origin, destination, route, onSelect }) {
         return () => {
             active = false
             listener?.remove()
+            driverMarker.current?.setMap(null)
         }
     }, [])
 
@@ -65,8 +74,11 @@ export function TripMap({ origin, destination, route, onSelect }) {
                     new Marker({ map: map.current, position, label: index === 0 ? 'A' : 'B' }),
                 )
             }
-            if (origin && destination) map.current.fitBounds(bounds, 64)
-            else if (origin || destination) map.current.panTo(bounds.getCenter())
+            if (viewport.current !== stopsKey) {
+                if (origin && destination) map.current.fitBounds(bounds, 64)
+                else if (origin || destination) map.current.panTo(bounds.getCenter())
+                viewport.current = stopsKey
+            }
             if (origin?.accuracy) {
                 const { Circle } = await loadMapsLibrary('maps')
                 if (!active) return
@@ -102,7 +114,43 @@ export function TripMap({ origin, destination, route, onSelect }) {
             polyline?.setMap(null)
             accuracyCircle?.setMap(null)
         }
-    }, [ready, origin, destination, route])
+    }, [ready, origin, destination, route, stopsKey])
+
+    useEffect(() => {
+        if (!ready) return
+        let active = true
+        async function updateDriver() {
+            if (!driverLocation) {
+                driverMarker.current?.setVisible(false)
+                return
+            }
+            const { Marker } = await loadMapsLibrary('marker')
+            const { Size, LatLngBounds } = await loadMapsLibrary('core')
+            if (!active) return
+            const position = { lat: driverLocation.latitude, lng: driverLocation.longitude }
+            if (!driverMarker.current) {
+                driverMarker.current = new Marker({
+                    map: map.current,
+                    position,
+                    title: 'Tuc tuc del viaje',
+                    icon: { url: '/favicon.svg', scaledSize: new Size(36, 36) },
+                    zIndex: 10,
+                })
+                const bounds = new LatLngBounds()
+                bounds.extend(position)
+                for (const point of [origin, destination]) {
+                    if (point) bounds.extend({ lat: point.latitude, lng: point.longitude })
+                }
+                map.current.fitBounds(bounds, 64)
+            }
+            driverMarker.current.setPosition(position)
+            driverMarker.current.setVisible(true)
+        }
+        updateDriver().catch(() => setError('No se pudo mostrar el tuc tuc en el mapa.'))
+        return () => {
+            active = false
+        }
+    }, [ready, driverLocation, origin, destination])
 
     return (
         <div className="map-surface">
@@ -118,6 +166,18 @@ export function TripMap({ origin, destination, route, onSelect }) {
                 </p>
             )}
             <span className="map-location">Jalapa, Guatemala</span>
+            {driverLocation && (
+                <button
+                    className="map-follow secondary-button"
+                    onClick={() => {
+                        const position = driverMarker.current?.getPosition()
+                        if (position) map.current?.panTo(position)
+                    }}
+                    type="button"
+                >
+                    Ver tuc tuc
+                </button>
+            )}
         </div>
     )
 }

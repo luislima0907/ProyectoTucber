@@ -354,6 +354,25 @@ textarea {
     font-size: 0.8rem;
     box-shadow: 0 4px 16px #253d4a1a;
 }
+.map-follow {
+    position: absolute;
+    left: 22px;
+    bottom: 28px;
+    width: auto;
+    box-shadow: 0 4px 16px #253d4a1a;
+}
+.tracking-status {
+    padding: 12px 16px;
+    margin: 16px 0;
+    background: #edf6fc;
+    border-radius: 10px;
+}
+.tracking-status p {
+    margin: 0 0 4px;
+}
+.tracking-status small {
+    color: var(--muted);
+}
 .place-field {
     margin: 24px 0 4px;
 }
