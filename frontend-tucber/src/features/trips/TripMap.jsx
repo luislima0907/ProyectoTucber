@@ -51,6 +51,7 @@ export function TripMap({ origin, destination, route, onSelect }) {
         let active = true
         const markers = []
         let polyline
+        let accuracyCircle
         async function draw() {
             const { Marker } = await loadMapsLibrary('marker')
             const { LatLngBounds } = await loadMapsLibrary('core')
@@ -66,6 +67,20 @@ export function TripMap({ origin, destination, route, onSelect }) {
             }
             if (origin && destination) map.current.fitBounds(bounds, 64)
             else if (origin || destination) map.current.panTo(bounds.getCenter())
+            if (origin?.accuracy) {
+                const { Circle } = await loadMapsLibrary('maps')
+                if (!active) return
+                accuracyCircle = new Circle({
+                    map: map.current,
+                    center: { lat: origin.latitude, lng: origin.longitude },
+                    radius: origin.accuracy,
+                    strokeColor: '#087cbe',
+                    strokeWeight: 1,
+                    fillColor: '#087cbe',
+                    fillOpacity: 0.12,
+                    clickable: false,
+                })
+            }
             if (route) {
                 const { encoding } = await loadMapsLibrary('geometry')
                 const { Polyline } = await loadMapsLibrary('maps')
@@ -85,6 +100,7 @@ export function TripMap({ origin, destination, route, onSelect }) {
             active = false
             markers.forEach((marker) => marker.setMap(null))
             polyline?.setMap(null)
+            accuracyCircle?.setMap(null)
         }
     }, [ready, origin, destination, route])
 
