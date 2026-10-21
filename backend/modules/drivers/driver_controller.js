@@ -58,6 +58,7 @@ export default class DriverController{
 
         try{
             const disponible = await this.driverService.getAvailability(idUsuario)
+            await req.app.locals.searchEngine.broadcastPending()
             return res.status(200).json({ disponible })
         }catch(error){
             console.error(error)
@@ -76,6 +77,7 @@ export default class DriverController{
 
         try{
             const disponible = await this.driverService.setAvailability(idUsuario, result.data.disponible)
+            await req.app.locals.searchEngine.broadcastPending()
             return res.status(200).json({ disponible })
         }catch(error){
             if (error.code === 'ACTIVE_TRIP'){

@@ -64,6 +64,7 @@ export default class SolicitudController{
 
         try{
             const solicitud = await this.service.create(idUsuario, result.data)
+            await req.app.locals.searchEngine.broadcastPending()
             return res.status(201).json({ solicitud })
         }catch(error){
             if (error.code === 'ACTIVE_REQUEST'){

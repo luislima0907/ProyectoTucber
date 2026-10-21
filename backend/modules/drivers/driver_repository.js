@@ -28,7 +28,7 @@ export default class DriverRepository{
                     `SELECT 1
                      FROM solicitudes
                      WHERE idConductor = $1
-                       AND estado IN ('aceptada', 'en_curso')
+                       AND estado IN ('aceptada', 'en_recogida', 'en_curso')
                      LIMIT 1`,
                     [idUsuario]
                 )
@@ -90,7 +90,7 @@ export default class DriverRepository{
                    SELECT 1
                    FROM solicitudes viaje
                    WHERE viaje.idConductor = $1
-                     AND viaje.estado IN ('aceptada', 'en_curso')
+                     AND viaje.estado IN ('aceptada', 'en_recogida', 'en_curso')
                )
              ORDER BY s.createAt ASC`,
             [idUsuario]
