@@ -1,47 +1,32 @@
 import jwt from 'jsonwebtoken'
 
-function getTokenFromCookie(req, name){
-  const header = req.headers.cookie
-  if (!header) return null
-  for (const part of header.split(';')){
-    const [key, ...rest] = part.trim().split('=')
-    if (key === name) return decodeURIComponent(rest.join('='))
-  }
-  return null
+export function readIdentity(request) {
+    const cookieName = process.env.SESSION_COOKIE_NAME || 'tucber_session'
+    const cookie = request.headers.cookie?.split(';').map(part => part.trim())
+        .find(part => part.startsWith(`${cookieName}=`))
+    const token = request.headers.authorization?.replace(/^Bearer /, '')
+        || (cookie && decodeURIComponent(cookie.slice(cookieName.length + 1)))
+    const user = jwt.verify(token, process.env.JWT_SECRET)
+    if (!Number.isInteger(Number(user.sub)) || !['cliente', 'conductor'].includes(user.rol)) {
+        throw new Error('Invalid identity')
+    }
+    return { ...user, sub: Number(user.sub) }
 }
 
 export function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = (authHeader && authHeader.split(' ')[1]) || getTokenFromCookie(req, process.env.SESSION_COOKIE_NAME || 'tucber_session');
-
-  if (!token) {
-    return res.status(401).json({ message: 'Token missing' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid or expired token' });
+    try {
+        req.user = readIdentity(req)
+        next()
+    } catch {
+        res.status(401).json({ message: 'Inicia sesión para continuar.' })
     }
-
-    req.user = decoded;
-    next();     
-  });
 }
 
 export function optionalAuthenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = (authHeader && authHeader.split(' ')[1]) || getTokenFromCookie(req, process.env.SESSION_COOKIE_NAME || 'tucber_session');
-
-  if (!token) {
-    return next();
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid or expired token' });
+    try {
+        req.user = readIdentity(req)
+    } catch {
+        req.user = null
     }
-
-    req.user = decoded;
-    next();
-  });
+    next()
 }

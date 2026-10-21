@@ -14,9 +14,6 @@ import TarifaService from '../modules/tarifas/tarifa_service.js'
 import SolicitudController from '../modules/solicitudes/solicitud_controller.js'
 import SolicitudService from '../modules/solicitudes/solicitud_service.js'
 import SolicitudRepository from '../modules/solicitudes/solicitud_repository.js'
-import OfertaController from '../modules/ofertas/oferta_controller.js'
-import OfertaService from '../modules/ofertas/oferta_service.js'
-import OfertaRepository from '../modules/ofertas/oferta_repository.js'
 
 export const modules = [
     {
@@ -51,10 +48,5 @@ export const modules = [
         repository: SolicitudRepository,
         public: false
     },
-    {
-        controller: OfertaController,
-        service: OfertaService,
-        repository: OfertaRepository,
-        public: false
-    }
+
 ]
