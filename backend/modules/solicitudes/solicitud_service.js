@@ -22,7 +22,8 @@ export default class SolicitudService {
             distanceMeters: quote.distanceMeters,
             amount: quote.amount,
             currency: quote.currency,
-            ttlSeconds: 60
+            route: quote.polyline,
+            ttlSeconds: 60,
         })
     }
 
@@ -42,7 +43,8 @@ export default class SolicitudService {
     async getPin(userId, id) {
         const trip = await this.repository.findById(id)
         if (!trip || trip.idusuario !== userId) throw new HttpError(404, 'Viaje no disponible.')
-        if (trip.estado !== 'en_recogida') throw new HttpError(409, 'El conductor todavía no ha llegado.')
+        if (trip.estado !== 'en_recogida')
+            throw new HttpError(409, 'El conductor todavía no ha llegado.')
         return { pin: trip.pin }
     }
 

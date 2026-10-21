@@ -1,6 +1,7 @@
 export async function runViajes(db) {
     await db.query(`
         ALTER TABLE solicitudes
+        ADD COLUMN IF NOT EXISTS ruta TEXT,
         ADD COLUMN IF NOT EXISTS finalizadoAt TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS pagoConfirmado BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS calificacion SMALLINT CHECK (calificacion BETWEEN 1 AND 5);

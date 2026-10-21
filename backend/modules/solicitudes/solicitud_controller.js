@@ -1,12 +1,16 @@
 import { z } from 'zod'
 import HttpError from '../../common/http_error.js'
 
-const point = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) })
+const point = z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    description: z.string().max(250).optional(),
+})
 const requestSchema = z.object({
     origin: point,
     destination: point,
     reference: z.string().max(250).optional(),
-    idempotencyKey: z.string().min(1).max(100)
+    idempotencyKey: z.string().min(1).max(100),
 })
 
 export default class SolicitudController {
@@ -34,9 +38,10 @@ export default class SolicitudController {
 
     async getCurrent(req, res) {
         const repository = this.service.repository
-        const row = req.user.rol === 'cliente'
-            ? await repository.findCurrentForClient(req.user.sub)
-            : await repository.findCurrentForDriver(req.user.sub)
+        const row =
+            req.user.rol === 'cliente'
+                ? await repository.findCurrentForClient(req.user.sub)
+                : await repository.findCurrentForDriver(req.user.sub)
         res.json({ solicitud: row ? repository.toSolicitud(row, []) : null })
     }
 
@@ -48,18 +53,23 @@ export default class SolicitudController {
     async markArrived(req, res) {
         this.requireRole(req, 'conductor')
         const row = await this.service.markArrived(req.user.sub, Number(req.params.id))
-        this.respond(req, res, row)
+        await this.respond(req, res, row)
     }
 
     async start(req, res) {
         this.requireRole(req, 'conductor')
-        if (!/^\d{4}$/.test(req.body.pin)) throw new HttpError(400, 'Introduce el PIN de 4 dígitos.')
-        const row = await this.service.validatePin(req.user.sub, Number(req.params.id), req.body.pin)
-        this.respond(req, res, row)
+        if (!/^\d{4}$/.test(req.body.pin))
+            throw new HttpError(400, 'Introduce el PIN de 4 dígitos.')
+        const row = await this.service.validatePin(
+            req.user.sub,
+            Number(req.params.id),
+            req.body.pin,
+        )
+        await this.respond(req, res, row)
     }
 
-    respond(req, res, row) {
-        req.app.locals.searchEngine.publishTrip(row)
+    async respond(req, res, row) {
+        await req.app.locals.searchEngine.publishTrip(row)
         res.json({ solicitud: this.service.repository.toSolicitud(row, []) })
     }
 }
