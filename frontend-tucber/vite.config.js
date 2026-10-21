@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:3001', rewrite: path => path.replace(/^\/api/, '') },
+      '/search': { target: 'ws://localhost:3001', ws: true }
+    }
+  },
   plugins: [
     react(),
     VitePWA({
@@ -10,7 +16,7 @@ export default defineConfig({
         name: 'Tucber',
         short_name: 'Tuc',
         description: 'Aplicacion de Uber',
-        theme_color: '#2563eb',
+        theme_color: '#087cbe',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
