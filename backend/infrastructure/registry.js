@@ -1,3 +1,6 @@
+import ViajeController from '../modules/viajes/viaje_controller.js'
+import ViajeService from '../modules/viajes/viaje_service.js'
+import ViajeRepository from '../modules/viajes/viaje_repository.js'
 import UserRepository from '../modules/users/user_repository.js'
 import UserController from '../modules/users/user_controller.js'
 import UserService from '../modules/users/user_service.js'
@@ -16,6 +19,7 @@ import SolicitudService from '../modules/solicitudes/solicitud_service.js'
 import SolicitudRepository from '../modules/solicitudes/solicitud_repository.js'
 
 export const modules = [
+    { controller: ViajeController, service: ViajeService, repository: ViajeRepository },
     {
         controller: UserController,
         service: UserService,

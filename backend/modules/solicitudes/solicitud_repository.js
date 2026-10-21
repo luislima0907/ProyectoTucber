@@ -170,6 +170,11 @@ export default class SolicitudRepository{
             llegadaAt: row.llegadaat,
             iniciadoAt: row.iniciadoat,
             driverId: row.idconductor,
+            paymentConfirmed: row.pagoconfirmado ?? false,
+            finishedAt: row.finalizadoat,
+            rating: row.calificacion,
+            driverName: row.conductornombre,
+            vehiclePlate: row.placavehiculo,
             offers: ofertas
         }
     }
