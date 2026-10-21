@@ -1,3 +1,4 @@
+import { runViajes } from './008_viajes_migration.js'
 import { runUsers } from "./001_users_migration.js";
 import { runConductor } from "./002_conductores_migration.js";
 import { runConductoresFoto } from "./003_conductores_foto_migration.js";
@@ -15,5 +16,6 @@ export async  function runMigrations(pool){
     await runDisponibilidadConductores(pool)
     await runLlegadaYPin(pool)
     await runPinValidacion(pool)
+    await runViajes(pool)
 
 }
