@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/useAuth'
 import { useSearchEngine } from '../hooks/useSearchEngine'
+import { useDriverTracking } from '../hooks/useDriverTracking'
 import { AppShell } from '../components/layout/AppShell'
 import { BookingPanel } from '../features/trips/BookingPanel'
 import { DriverRequests } from '../features/trips/DriverRequests'
@@ -11,13 +12,24 @@ import { ConductorProfileForm } from '../components/ConductorProfileForm'
 export function Dashboard() {
     const { user, logout } = useAuth()
     const [view, setView] = useState('home')
+    const [selectedTrip, setSelectedTrip] = useState(null)
     const search = useSearchEngine()
     const isDriver = user.rol === 'conductor'
+    const tracking = ['aceptada', 'en_recogida', 'en_curso'].includes(search.trip?.status)
+    const trackingError = useDriverTracking(
+        search.trip?.id,
+        isDriver && tracking && search.connected,
+        search.send,
+    )
+    const displayedTrip = selectedTrip || search.trip
     return (
         <AppShell
             user={user}
             view={view}
-            onNavigate={setView}
+            onNavigate={(nextView) => {
+                setView(nextView)
+                setSelectedTrip(null)
+            }}
             onLogout={logout}
             connected={search.connected}
         >
@@ -41,7 +53,7 @@ export function Dashboard() {
                 <History
                     isDriver={isDriver}
                     onSelect={(trip) => {
-                        search.setTrip(trip)
+                        setSelectedTrip(trip)
                         setView('home')
                     }}
                 />
@@ -49,14 +61,16 @@ export function Dashboard() {
                 <div className="page-content" role="status">
                     Recuperando tu viaje…
                 </div>
-            ) : search.trip ? (
+            ) : displayedTrip ? (
                 <ActiveTrip
-                    key={search.trip.id}
-                    trip={search.trip}
+                    key={displayedTrip.id}
+                    trip={displayedTrip}
                     user={user}
-                    onChange={search.setTrip}
-                    onClose={() => search.setTrip(null)}
+                    onChange={selectedTrip ? setSelectedTrip : search.setTrip}
+                    onClose={() => (selectedTrip ? setSelectedTrip(null) : search.setTrip(null))}
                     connected={search.connected}
+                    driverLocation={search.driverLocation}
+                    trackingError={trackingError}
                 />
             ) : isDriver ? (
                 <DriverRequests search={search} />

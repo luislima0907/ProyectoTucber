@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { API_URL } from '../config/api'
 import { getAccessToken } from '../config/auth'
 
 export function useSearchEngine() {
     const socket = useRef(null)
     const [trip, setTrip] = useState(null)
+    const [driverLocation, setDriverLocation] = useState(null)
     const [requests, setRequests] = useState([])
     const [connected, setConnected] = useState(false)
     const [restoring, setRestoring] = useState(true)
@@ -29,8 +30,15 @@ export function useSearchEngine() {
                 const { type, data } = JSON.parse(event.data)
                 if (type === 'trip') {
                     setTrip(data)
+                    setDriverLocation((location) =>
+                        data?.id === location?.tripId &&
+                        ['aceptada', 'en_recogida', 'en_curso'].includes(data?.status)
+                            ? location
+                            : null,
+                    )
                     setRestoring(false)
                 }
+                if (type === 'trip-location') setDriverLocation(data)
                 if (type === 'requests') setRequests(data)
                 if (type === 'error') {
                     setError(data.message)
@@ -51,7 +59,7 @@ export function useSearchEngine() {
         }
     }, [])
 
-    function send(type, data = {}) {
+    const send = useCallback((type, data = {}) => {
         if (socket.current?.readyState !== WebSocket.OPEN) {
             setError('Se perdió la conexión. Estamos reconectando.')
             return false
@@ -59,7 +67,7 @@ export function useSearchEngine() {
         setError('')
         socket.current.send(JSON.stringify({ type, ...data }))
         return true
-    }
+    }, [])
 
-    return { trip, setTrip, requests, connected, restoring, error, setError, send }
+    return { trip, setTrip, driverLocation, requests, connected, restoring, error, setError, send }
 }
