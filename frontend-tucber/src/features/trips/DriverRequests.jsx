@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { driverService } from '../../services/driverService'
 import { formatMoney, getErrorMessage } from '../../services/tripService'
 import { TripMap } from './TripMap'
+import { getCurrentLocation } from '../../services/locationService'
 
 export function DriverRequests({ search }) {
     const [available, setAvailable] = useState(false)
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
+    const [locationMessage, setLocationMessage] = useState('')
     useEffect(() => {
         driverService
             .getAvailability()
@@ -17,18 +19,19 @@ export function DriverRequests({ search }) {
     async function toggleAvailability() {
         setBusy(true)
         setError('')
+        setLocationMessage('')
         try {
             const data = await driverService.updateAvailability(!available)
             setAvailable(data.disponible)
-            if (data.disponible)
-                navigator.geolocation?.getCurrentPosition((position) => {
-                    search.send('location', {
-                        location: {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                        },
-                    })
-                })
+            if (data.disponible) {
+                getCurrentLocation()
+                    .then((location) => search.send('location', { location }))
+                    .catch(() =>
+                        setLocationMessage(
+                            'La disponibilidad sigue activa. No se pudo obtener tu ubicación.',
+                        ),
+                    )
+            }
         } catch (failure) {
             setError(getErrorMessage(failure))
         } finally {
@@ -58,6 +61,11 @@ export function DriverRequests({ search }) {
                         ? 'Disponible para recibir solicitudes'
                         : 'No estás recibiendo solicitudes'}
                 </p>
+                {locationMessage && (
+                    <p className="form-note" role="status">
+                        {locationMessage}
+                    </p>
+                )}
                 {error && (
                     <p role="alert" className="error-msg">
                         {error}

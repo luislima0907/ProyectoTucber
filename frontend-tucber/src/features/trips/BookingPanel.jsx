@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { PlaceField } from './PlaceField'
 import { TripMap } from './TripMap'
+import { getCurrentLocation } from '../../services/locationService'
 import { tripService, getErrorMessage, formatMoney } from '../../services/tripService'
 
 export function BookingPanel({ onCreated }) {
@@ -11,12 +12,17 @@ export function BookingPanel({ onCreated }) {
     const [quote, setQuote] = useState(null)
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
+    const [locating, setLocating] = useState(false)
+    const locationRequest = useRef(0)
     const attempt = useRef(null)
     const pending = useRef(false)
 
     function selectPoint(type, value) {
-        if (type === 'origin') setOrigin(value)
-        else setDestination(value)
+        if (type === 'origin') {
+            locationRequest.current += 1
+            setLocating(false)
+            setOrigin(value)
+        } else setDestination(value)
         setQuote(null)
         attempt.current = null
         setError('')
@@ -48,17 +54,19 @@ export function BookingPanel({ onCreated }) {
         }
     }
 
-    function locate() {
-        navigator.geolocation?.getCurrentPosition(
-            (position) => {
-                selectPoint('origin', {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    description: 'Mi ubicación',
-                })
-            },
-            () => setError('Selecciona tu recogida en el mapa o búscala por nombre.'),
-        )
+    async function locate() {
+        const request = ++locationRequest.current
+        setLocating(true)
+        setError('')
+        try {
+            const position = await getCurrentLocation()
+            if (request === locationRequest.current) selectPoint('origin', position)
+        } catch (failure) {
+            if (request === locationRequest.current) {
+                setError(failure.message)
+                setLocating(false)
+            }
+        }
     }
 
     return (
@@ -72,9 +80,20 @@ export function BookingPanel({ onCreated }) {
                         value={origin}
                         onSelect={(value) => selectPoint('origin', value)}
                     />
-                    <button className="text-button" type="button" onClick={locate}>
-                        Usar mi ubicación
+                    <button
+                        className="text-button"
+                        type="button"
+                        onClick={locate}
+                        disabled={locating}
+                    >
+                        {locating ? 'Buscando una ubicación más precisa…' : 'Usar mi ubicación'}
                     </button>
+                    {origin?.accuracy && (
+                        <p className="form-note" role="status">
+                            Precisión reportada: ±{Math.ceil(origin.accuracy)} m. Puedes ajustar la
+                            recogida en el mapa.
+                        </p>
+                    )}
                     <PlaceField
                         label="Destino"
                         value={destination}
