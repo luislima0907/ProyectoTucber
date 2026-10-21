@@ -18,13 +18,21 @@ export function useSearchEngine() {
             url.pathname = '/search'
             const connection = new WebSocket(url)
             socket.current = connection
-            connection.onopen = () => { if (active) setConnected(true) }
-            connection.onmessage = event => {
+            connection.onopen = () => {
+                if (active) setConnected(true)
+            }
+            connection.onmessage = (event) => {
                 if (!active) return
                 const { type, data } = JSON.parse(event.data)
-                if (type === 'trip') { setTrip(data); setRestoring(false) }
+                if (type === 'trip') {
+                    setTrip(data)
+                    setRestoring(false)
+                }
                 if (type === 'requests') setRequests(data)
-                if (type === 'error') { setError(data.message); setRestoring(false) }
+                if (type === 'error') {
+                    setError(data.message)
+                    setRestoring(false)
+                }
             }
             connection.onclose = () => {
                 if (!active) return
@@ -33,7 +41,11 @@ export function useSearchEngine() {
             }
         }
         connect()
-        return () => { active = false; clearTimeout(reconnect); socket.current?.close() }
+        return () => {
+            active = false
+            clearTimeout(reconnect)
+            socket.current?.close()
+        }
     }, [])
 
     function send(type, data = {}) {

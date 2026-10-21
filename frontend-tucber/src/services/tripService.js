@@ -29,7 +29,7 @@ export const tripService = {
     async earnings() {
         const { data } = await api.get('/viajes/ingresos')
         return data
-    }
+    },
 }
 
 export function getErrorMessage(error) {

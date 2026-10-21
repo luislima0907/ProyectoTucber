@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react"
-import { authService } from "../services/authService"
-import { AuthContext } from "./Context.js"
+import { useState, useEffect } from 'react'
+import { authService } from '../services/authService'
+import { AuthContext } from './Context.js'
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        authService.getProfile()
+        authService
+            .getProfile()
             .then((userData) => setUser(userData))
             .catch(() => setUser(null))
             .finally(() => setLoading(false))
