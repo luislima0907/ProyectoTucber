@@ -22,6 +22,14 @@ export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
     const [seconds, setSeconds] = useState(60)
     const pending = useRef(false)
     const isDriver = user.rol === 'conductor'
+    const driverTitles = {
+        aceptada: 'Ve por tu pasajero.',
+        en_recogida: 'Listos para salir.',
+        en_curso: 'Sigue la ruta al destino.',
+    }
+    const title = isDriver
+        ? driverTitles[trip.status] || statusTitles[trip.status]
+        : statusTitles[trip.status]
     const closed = ['completada', 'cancelada', 'vencida'].includes(trip.status)
 
     useEffect(() => {
@@ -76,7 +84,7 @@ export function ActiveTrip({ trip, user, onChange, onClose, connected }) {
         <div className="ride-layout">
             <section className="ride-panel">
                 <span className="trip-number">Viaje #{trip.id}</span>
-                <h1>{statusTitles[trip.status]}</h1>
+                <h1>{title}</h1>
                 {trip.status === 'buscando' && (
                     <p className="search-countdown" role="status">
                         {seconds}

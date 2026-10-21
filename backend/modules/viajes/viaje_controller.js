@@ -15,9 +15,9 @@ export default class ViajeController {
     async update(req, res, action) {
         const trip = await this.service[action](Number(req.params.id), req.user, req.body.stars)
         const search = req.app.locals.searchEngine
-        await search.publishTrip(trip)
+        const updated = await search.publishTrip(trip)
         await search.broadcastPending()
-        res.json({ solicitud: search.requestService.repository.toSolicitud(trip, []) })
+        res.json({ solicitud: updated })
     }
 
     async report(req, res) {

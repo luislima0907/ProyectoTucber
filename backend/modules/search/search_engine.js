@@ -153,6 +153,7 @@ export default class SearchEngine {
             if (user.sub === row.idusuario || user.sub === row.idconductor)
                 this.send(socket, 'trip', trip)
         }
+        return trip
     }
 
     async expire() {

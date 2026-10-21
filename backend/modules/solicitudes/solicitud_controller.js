@@ -69,7 +69,7 @@ export default class SolicitudController {
     }
 
     async respond(req, res, row) {
-        await req.app.locals.searchEngine.publishTrip(row)
-        res.json({ solicitud: this.service.repository.toSolicitud(row, []) })
+        const updated = await req.app.locals.searchEngine.publishTrip(row)
+        res.json({ solicitud: updated })
     }
 }
