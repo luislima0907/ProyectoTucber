@@ -16,13 +16,13 @@ export default class TarifaService {
             throw error
         }
 
-        const [originAddress, destinationAddress] = await Promise.all([
+        const [originAddresses, destinationAddresses] = await Promise.all([
             this.reverseGeocode(origin),
             this.reverseGeocode(destination)
         ])
 
-        this.assertInPilotZone(originAddress, 'origen')
-        this.assertInPilotZone(destinationAddress, 'destino')
+        this.assertInPilotZone(originAddresses, 'origen')
+        this.assertInPilotZone(destinationAddresses, 'destino')
 
         const route = await this.getRoute(origin, destination)
         return {
@@ -53,20 +53,28 @@ export default class TarifaService {
             error.code = 'UPSTREAM'
             throw error
         }
-        return data.results[0]
+        return data.results
     }
 
-    assertInPilotZone(address, pointName) {
-        const components = address.address_components ?? []
-        const department = this.getComponent(components, 'administrative_area_level_1') ?? ''
-        const country = this.getComponent(components, 'country', 'short_name')
+    assertInPilotZone(addresses, pointName) {
         const zone = TARIFA_CONFIG.pilotZone
-        const dentroDelDepartamento = department
-            .toLowerCase()
-            .includes(zone.department.toLowerCase())
+        const departmentAddresses = addresses.filter((address) =>
+            address.types?.includes('administrative_area_level_1')
+        )
+        const candidates = departmentAddresses.length ? departmentAddresses : addresses
+        const isInPilotZone = candidates.some((address) => {
+            const components = address.address_components ?? []
+            const department = this.getComponent(components, 'administrative_area_level_1') ?? ''
+            const country = this.getComponent(components, 'country', 'short_name')
+            const isInDepartment = department.toLowerCase().includes(zone.department.toLowerCase())
 
-        if (!dentroDelDepartamento || country !== zone.countryCode) {
-            const error = new Error(`El punto de ${pointName} está fuera de la zona piloto`)
+            return isInDepartment && country === zone.countryCode
+        })
+
+        if (!isInPilotZone) {
+            const error = new Error(
+                `El punto de ${pointName} está fuera de la zona de servicio de ${zone.department}.`
+            )
             error.code = 'ZONE'
             throw error
         }
