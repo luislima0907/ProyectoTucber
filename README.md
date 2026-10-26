@@ -1,0 +1,1 @@
+Enlace al proyecto en Linear: https://linear.app/tucber-web-umg/team/TUC/all
